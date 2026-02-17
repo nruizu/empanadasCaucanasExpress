@@ -7,3 +7,6 @@ idna==3.11
 requests==2.32.5
 sqlparse==0.5.5
 urllib3==2.6.3
+psycopg[binary]>=3.1
+python-dotenv>=1
+django-environ>=0.11
