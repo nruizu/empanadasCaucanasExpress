@@ -18,10 +18,14 @@ services:
       - .env
 
     command: >
-      sh -c "echo 'Django corriendo en Docker (contenedor backend)' &&
-      echo 'Aplicacion: http://localhost:8080' &&
-      echo 'PostgreSQL (servicio): $$DB_HOST:$$DB_PORT' &&
-      python manage.py runserver 0.0.0.0:8080"
+      sh -c "
+      echo 'Esperando base de datos...' &&
+      python wait_for_db.py &&
+      echo 'Base de datos lista ✅' &&
+      python manage.py migrate &&
+      echo 'Iniciando servidor Django...' &&
+      python manage.py runserver 0.0.0.0:8080
+      "
 
     depends_on:
       - postgres
