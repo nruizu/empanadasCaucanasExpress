@@ -11,3 +11,5 @@ psycopg[binary]>=3.1
 python-dotenv>=1
 django-environ>=0.11
 psycopg2-binary>=2.9
+flake8>=4.0
+black>=22.3.0
