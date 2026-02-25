@@ -64,7 +64,7 @@ jobs:
       
       - name: Check format
         run: |
-          black --check .
+          black --check --diff .
 
       - name: Lint
         run: flake8 .
