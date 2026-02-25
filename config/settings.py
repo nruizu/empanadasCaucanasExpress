@@ -9,7 +9,6 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
-# This file is used to configure the Django project. It includes settings for the database, installed apps, middleware, templates, and more. The settings are loaded from environment variables using the `environ` library, which allows for easy configuration in different environments (development, production, etc.). The database settings are configured to use PostgreSQL, and the connection parameters are read from environment variables defined in a `.env` file located at the base directory of the project.
 
 from pathlib import Path
 import environ
