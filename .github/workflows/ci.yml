@@ -61,7 +61,10 @@ jobs:
       - name: Ejecutar tests
         run: |
           python manage.py test
+
+      - name: Lint
+        run: flake8 .
       
       - name: Check format
         run: |
-          black --check .
+          black --check --diff .

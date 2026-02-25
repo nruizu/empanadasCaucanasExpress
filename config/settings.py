@@ -25,7 +25,8 @@ environ.Env.read_env(os.path.join(BASE_DIR / ".env"))
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-vug*&ixopeo&^#*^vyltn4q41n$2^(yslut$q_13__f*3pp#-s"
+SECRET_KEY = "django-insecure-vug*&ixopeo&^#*^\
+vyltn4q41n$2^(yslut$q_13__f*3pp#-s"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -94,16 +95,20 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": "django.contrib.auth.password_\
+            validation.UserAttributeSimilarityValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "NAME": "django.contrib.auth.password_\
+            validation.MinimumLengthValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+        "NAME": "django.contrib.auth.password_\
+            validation.CommonPasswordValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+        "NAME": "django.contrib.auth.password_\
+            validation.NumericPasswordValidator",
     },
 ]
 
@@ -123,5 +128,5 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = "static/"
 
+STATIC_URL = "static/"
