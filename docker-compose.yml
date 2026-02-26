@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   backend:
@@ -24,6 +22,7 @@ services:
       echo 'Base de datos lista ✅' &&
       python manage.py migrate &&
       echo 'Iniciando servidor Django...' &&
+      echo '🚀 Django corriendo en: http://localhost:8080' &&
       python manage.py runserver 0.0.0.0:8080
       "
 
