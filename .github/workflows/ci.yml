@@ -56,11 +56,11 @@ jobs:
 
       - name: Aplicar migraciones
         run: |
-          python manage.py migrate
+          python backend/manage.py migrate
 
       - name: Ejecutar tests
         run: |
-          python manage.py test
+          python backend/manage.py test
 
       - name: Lint
         run: flake8 .

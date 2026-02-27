@@ -8,7 +8,7 @@ class Category(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        # When the model is used, django order search by name and specifies that shows as categories
+        # When the model is used, django order search by name
         ordering = ["name"]
         verbose_name_plural = "categories"
 
