@@ -46,7 +46,10 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=160)),
                 ("slug", models.SlugField(max_length=180, unique=True)),
                 ("description", models.TextField(blank=True)),
-                ("price", models.DecimalField(decimal_places=2, max_digits=10)),
+                (
+                    "price",
+                    models.DecimalField(decimal_places=2, max_digits=10),
+                ),
                 ("image", models.URLField(blank=True)),
                 ("is_featured", models.BooleanField(default=False)),
                 ("is_active", models.BooleanField(default=True)),
