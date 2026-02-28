@@ -137,7 +137,7 @@ export default function CatalogPageClient() {
     <main className="min-h-screen bg-[var(--cce-beige)] pb-14">
       <section className="relative h-[340px] overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1526318472351-c75fcf070305?auto=format&fit=crop&w=1600&q=80"
+          src="/Local_sede.jpeg"
           alt="Empanadas tradicionales"
           className="h-full w-full object-cover"
         />

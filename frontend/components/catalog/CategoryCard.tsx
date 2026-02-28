@@ -7,6 +7,18 @@ interface CategoryCardProps {
 }
 
 export default function CategoryCard({ category, selected = false, onSelect }: CategoryCardProps) {
+
+
+  const CATEGORY_IMAGES: Record<string, string> = {
+    entradas: "/entradas.jpeg",
+    desayunos: "/desayuno.jpeg",
+    comidas: "comidas.jpeg",
+    "bebidas-calientes": "bebidaCaliente.jpg",
+    "bebidas-frias": "bebidas_frias.jpg",
+    "para-llevar": "/para-llevar.jpeg",
+  };
+
+
   return (
     <button
       type="button"
@@ -17,7 +29,7 @@ export default function CategoryCard({ category, selected = false, onSelect }: C
       aria-pressed={selected}
     >
       <img
-        src={category.image || "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80"}
+        src={category.image || CATEGORY_IMAGES[category.slug] || "/default.jpg"}
         alt={category.name}
         className="h-32 w-full object-cover"
       />
