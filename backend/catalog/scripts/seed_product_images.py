@@ -81,7 +81,8 @@ def _normalize_product_slug(product_slug: str):
     )
     for prefix in prefixes:
         if product_slug.startswith(prefix):
-            return product_slug[len(prefix)]
+            prefix_len = len(prefix)
+            return product_slug[prefix_len:]
     return product_slug
 
 
@@ -94,7 +95,6 @@ def _keyword_fallback(slug_value: str, available_files):
 
 def run_seed_product_images(images_dir: str = "backend/catalog/seed_images"):
     images_path = Path(images_dir)
-    images_dir == "backend/catalog/seed_images"
     if not images_path.exists() and images_dir:
         docker_path = Path("/app/backend/catalog/seed_images")
         if docker_path.exists():
@@ -115,9 +115,7 @@ def run_seed_product_images(images_dir: str = "backend/catalog/seed_images"):
         }
     ]
     compact_file_map = {_compact(path.stem): path for path in image_files}
-    for path in image_files:
-        return path.name
-    available_files = path.name
+    available_files = {path.name for path in image_files}
 
     loaded = 0
     missing = 0
@@ -155,10 +153,12 @@ def run_seed_product_images(images_dir: str = "backend/catalog/seed_images"):
             if fallback_filename:
                 candidate = images_path / fallback_filename
 
-        if candidate is None and product.slug.startswith("bebidas-calientes-"):
-            fallback_filename = "aromatica. \
-                jpeg" if "te-" in product.slug else "bebida \
-                    Caliente.jpg"
+        is_hot_drink = product.slug.startswith("bebidas-calientes-")
+        if candidate is None and is_hot_drink:
+            if "te-" in product.slug:
+                fallback_filename = "aromatica.jpeg"
+            else:
+                fallback_filename = "bebidaCaliente.jpg"
             if fallback_filename in available_files:
                 candidate = images_path / fallback_filename
 
@@ -179,6 +179,8 @@ def run_seed_product_images(images_dir: str = "backend/catalog/seed_images"):
 
 
 if __name__ == "__main__":
-    images_dir_arg = sys.argv[1] if len(sys.argv) > 1 else "backend/catalog/ \
-    seed_images"
+    if len(sys.argv) > 1:
+        images_dir_arg = sys.argv[1]
+    else:
+        images_dir_arg = "backend/catalog/seed_images"
     run_seed_product_images(images_dir=images_dir_arg)
