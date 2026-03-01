@@ -38,7 +38,9 @@ KEYWORD_FILE_MAP = {
     "caucanas": "caucanitas_x_12.jpeg",
     "arepa-de-huevo": "arepa_huevo.jpeg",
     "arepa-de-maiz": "arepa_maiz.jpeg",
+    "arepas-de-maiz": "arepa_maiz.jpeg",
     "arepa-de-chocolo": "chocolo.jpeg",
+    "arepas-de-chocolo": "chocolo.jpeg",
     "gaseosa": "gaseosas.jpeg",
     "jugo": "jugo_soda.jpeg",
     "soda": "jugo_soda.jpeg",
@@ -53,8 +55,9 @@ KEYWORD_FILE_MAP = {
     "caucanita": "caucanitas_x_12.jpeg",
     "empanada": "empanada-caucana.jpeg",
     "pastelito": "palitos_queso.jpg",
-    "latte": "latte.jpg",
-    "capuccino": "capuccino.jpg",
+    "latte": "latte_capuccino_mocaccino.jpg",
+    "capuccino": "latte_capuccino_mocaccino.jpg",
+    "capuchino": "latte_capuccino_mocaccino.jpg",
 }
 
 

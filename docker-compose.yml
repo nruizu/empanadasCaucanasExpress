@@ -26,6 +26,7 @@ services:
 
     volumes:
       - ./backend:/app/backend
+      - ./media:/app/media
 
     ports:
       - "8080:8080"
