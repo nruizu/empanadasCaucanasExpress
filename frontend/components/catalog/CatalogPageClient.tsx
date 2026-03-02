@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import useAuth from "@/hooks/useAuth";
+import * as cartApi from "@/lib/cart-api";
 
 import CategoryCard from "@/components/catalog/CategoryCard";
 import ProductGrid from "@/components/catalog/ProductGrid";
@@ -53,7 +56,8 @@ export default function CatalogPageClient() {
         const byCategoryData = await getProductsByCategory(firstSlug, { ordering: "name" });
         setCategoryProducts(byCategoryData.results);
       }
-    } catch {
+    } catch (err) {
+      console.error('loadInitialData error:', err);
       setError("No se pudo cargar el catálogo. Intenta nuevamente.");
     } finally {
       setLoading(false);
@@ -70,7 +74,8 @@ export default function CatalogPageClient() {
       setAllProducts(data.results);
       setTotalProducts(data.count);
       setError(null);
-    } catch {
+    } catch (err) {
+      console.error('loadAllProducts error:', err);
       setError("No se pudieron actualizar los productos.");
     }
   }, [ordering, page, search]);
@@ -81,7 +86,8 @@ export default function CatalogPageClient() {
     try {
       const data = await getProductsByCategory(slug, { ordering: "name" });
       setCategoryProducts(data.results);
-    } catch {
+    } catch (err) {
+      console.error('loadProductsByCategory error:', err);
       setError("No se pudieron cargar los productos de la categoría seleccionada.");
     } finally {
       setLoadingCategoryProducts(false);
@@ -98,8 +104,59 @@ export default function CatalogPageClient() {
     }
   }, [loading, loadAllProducts]);
 
-  const handleAddToCart = (productId: number) => {
-    void productId;
+  const router = useRouter();
+  const { token } = useAuth();
+
+  // keep track of the active cart id so we reuse it instead of blindly
+  // picking the first element from the list (which might be an old empty
+  // cart).
+  const [activeCartId, setActiveCartId] = useState<number | null>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("cce_cart_id");
+      return stored ? parseInt(stored, 10) : null;
+    }
+    return null;
+  });
+
+  const handleAddToCart = async (productId: number) => {
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      console.log('adding to cart, token', token);
+      let cartId = activeCartId;
+
+      if (!cartId) {
+        const carts = await cartApi.getCarts(token);
+        console.log('existing carts', carts);
+        if (Array.isArray(carts) && carts.length > 0) {
+          // pick the last (most recently created) cart, or one that already
+          // contains products if you prefer
+          const recent = carts[carts.length - 1];
+          cartId = recent.id;
+        }
+      }
+
+      if (!cartId) {
+        const created = await cartApi.createCart(token);
+        console.log('created cart', created);
+        cartId = created.id;
+      }
+
+      setActiveCartId(cartId as number);
+      if (typeof window !== "undefined") {
+        localStorage.setItem('cce_cart_id', String(cartId));
+      }
+
+      const added = await cartApi.addProduct(cartId as number, token, productId, 1);
+      console.log('addProduct response', added);
+      window.alert('Producto agregado al carrito');
+    } catch (err: any) {
+      console.error('add to cart error', err);
+      window.alert(err.message || 'Error agregando al carrito');
+    }
   };
 
   const hasNextPage = page * 20 < totalProducts;

@@ -1,23 +1,10 @@
-import os
-import sys
 from pathlib import Path
 
-import django
 from django.core.files import File
+from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 
-
-def _setup_django():
-    project_root = Path(__file__).resolve().parents[4]
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.config.settings")
-    django.setup()
-
-
-_setup_django()
-
-from backend.catalog.models import Product  # noqa: E402
+from backend.catalog.models import Product
 
 ALIASES = {
     "papita-rellena": "ppa_rellena",
@@ -181,9 +168,21 @@ def run_seed_product_images(images_dir: str = "backend/catalog/seed_images"):
             print(f"- {slug}")
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        images_dir_arg = sys.argv[1]
-    else:
-        images_dir_arg = "backend/catalog/seed_images"
-    run_seed_product_images(images_dir=images_dir_arg)
+class Command(BaseCommand):
+    help = "Populate product image field by matching files in a directory"
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "images_dir",
+            nargs="?",
+            default="backend/catalog/seed_images",
+            help="Path to the folder containing product image files",
+        )
+
+    def handle(self, *args, **options):
+        images_dir = options.get("images_dir")
+        self.stdout.write(f"Seeding images from {images_dir}")
+        run_seed_product_images(images_dir=images_dir)
+        self.stdout.write(self.style.SUCCESS("Image seed completed."))
+
+
