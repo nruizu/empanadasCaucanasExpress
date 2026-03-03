@@ -11,13 +11,94 @@ import {
   getProducts,
   getProductsByCategory,
 } from "@/lib/catalog-api";
-import type { Category, Product } from "@/types/catalog";
+import type { CatalogProduct, Category, Product } from "@/types/catalog";
+
+const toNumberPrice = (value: string) => Number(value);
+
+const extractVariantLabel = (name: string) => {
+  const sizeMatch = name.match(/\b(pequeñ[ao]|median[ao]|grande)\b/i);
+  if (sizeMatch?.[0]) {
+    return sizeMatch[0][0].toUpperCase() + sizeMatch[0].slice(1).toLowerCase();
+  }
+
+  const xMatch = name.match(/\bx\s*\d+\b/i);
+  if (xMatch?.[0]) {
+    return xMatch[0].toUpperCase().replace(/\s+/g, "");
+  }
+
+  const weightMatch = name.match(/\b\d+\s*(g|ml)\b/i);
+  if (weightMatch?.[0]) {
+    return weightMatch[0].replace(/\s+/g, " ").toUpperCase();
+  }
+
+  const portionMatch = name.match(/\b(1\/2\s*porción|porción\s*completa)\b/i);
+  if (portionMatch?.[0]) {
+    return portionMatch[0][0].toUpperCase() + portionMatch[0].slice(1);
+  }
+
+  const peopleMatch = name.match(/\b\d+\s*(–|-)?\s*\d*\s*personas\b/i);
+  if (peopleMatch?.[0]) {
+    return peopleMatch[0][0].toUpperCase() + peopleMatch[0].slice(1);
+  }
+
+  return "Única";
+};
+
+const normalizeBaseName = (name: string) =>
+  name
+    .replace(/\b(pequeñ[ao]|median[ao]|grande)\b/gi, "")
+    .replace(/\bx\s*\d+\b/gi, "")
+    .replace(/\b\d+\s*(g|ml)\b/gi, "")
+    .replace(/\b(1\/2\s*porción|porción\s*completa)\b/gi, "")
+    .replace(/\b\d+\s*(–|-)?\s*\d*\s*personas\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+const groupProductsWithVariants = (products: Product[]): CatalogProduct[] => {
+  const grouped = new Map<string, CatalogProduct>();
+
+  products.forEach((product) => {
+    const baseName = normalizeBaseName(product.name) || product.name;
+    const mapKey = `${product.category.slug}::${baseName.toLowerCase()}`;
+    const variantLabel = extractVariantLabel(product.name);
+
+    const variant = {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      label: variantLabel,
+    };
+
+    const existing = grouped.get(mapKey);
+    if (existing) {
+      existing.variants.push(variant);
+      return;
+    }
+
+    grouped.set(mapKey, {
+      id: product.id,
+      slug: product.slug,
+      name: baseName,
+      description: product.description,
+      category: product.category,
+      variants: [variant],
+    });
+  });
+
+  return Array.from(grouped.values()).map((groupedProduct) => ({
+    ...groupedProduct,
+    variants: groupedProduct.variants.sort(
+      (left, right) => toNumberPrice(left.price) - toNumberPrice(right.price),
+    ),
+  }));
+};
 
 export default function CatalogPageClient() {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [categoryProducts, setCategoryProducts] = useState<Product[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<CatalogProduct[]>([]);
+  const [allProducts, setAllProducts] = useState<CatalogProduct[]>([]);
+  const [categoryProducts, setCategoryProducts] = useState<CatalogProduct[]>([]);
   const [selectedCategorySlug, setSelectedCategorySlug] = useState<string | null>(null);
   const [ordering, setOrdering] = useState<"name" | "-name" | "price" | "-price">("name");
   const [search, setSearch] = useState("");
@@ -43,15 +124,15 @@ export default function CatalogPageClient() {
       ]);
 
       setCategories(categoriesData);
-      setFeaturedProducts(featuredData);
-      setAllProducts(productsData.results);
+      setFeaturedProducts(groupProductsWithVariants(featuredData));
+      setAllProducts(groupProductsWithVariants(productsData.results));
       setTotalProducts(productsData.count);
 
       if (categoriesData.length > 0) {
         const firstSlug = categoriesData[0].slug;
         setSelectedCategorySlug(firstSlug);
         const byCategoryData = await getProductsByCategory(firstSlug, { ordering: "name" });
-        setCategoryProducts(byCategoryData.results);
+        setCategoryProducts(groupProductsWithVariants(byCategoryData.results));
       }
     } catch {
       setError("No se pudo cargar el catálogo. Intenta nuevamente.");
@@ -67,7 +148,7 @@ export default function CatalogPageClient() {
         ordering,
         search,
       });
-      setAllProducts(data.results);
+      setAllProducts(groupProductsWithVariants(data.results));
       setTotalProducts(data.count);
       setError(null);
     } catch {
@@ -80,7 +161,7 @@ export default function CatalogPageClient() {
     setSelectedCategorySlug(slug);
     try {
       const data = await getProductsByCategory(slug, { ordering: "name" });
-      setCategoryProducts(data.results);
+      setCategoryProducts(groupProductsWithVariants(data.results));
     } catch {
       setError("No se pudieron cargar los productos de la categoría seleccionada.");
     } finally {

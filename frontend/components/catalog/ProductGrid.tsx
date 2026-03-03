@@ -1,8 +1,8 @@
 import ProductCard from "@/components/catalog/ProductCard";
-import type { Product } from "@/types/catalog";
+import type { CatalogProduct } from "@/types/catalog";
 
 interface ProductGridProps {
-  products: Product[];
+  products: CatalogProduct[];
   emptyMessage: string;
   onAddToCart?: (productId: number) => void;
 }
