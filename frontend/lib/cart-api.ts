@@ -1,28 +1,53 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 async function request(path: string, options: RequestInit = {}) {
-  const res = await fetch(`${API_BASE_URL}${path}`, options);
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("cce_token")
+      : null;
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Token ${token}` } : {}),
+      ...options.headers,
+    },
+  });
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || body.error || res.statusText);
   }
+
   return res.json().catch(() => ({}));
 }
 
-export const getCarts = (token: string) =>
-  request('/cart/', { headers: { Authorization: `Token ${token}` } });
+// 🔹 Obtener carrito del usuario autenticado
+export function getMyCart() {
+  return request("/api/cart/my_cart/");
+}
 
-export const createCart = (token: string) =>
-  request('/cart/create_cart/', { method: 'POST', headers: { Authorization: `Token ${token}` } });
-
-export const addProduct = (cartId: number | string, token: string, productId: number, quantity = 1) =>
-  request(`/cart/${cartId}/add_product/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
-    body: JSON.stringify({ product_id: productId, quantity }),
+// 🔹 Crear carrito
+export function createCart() {
+  return request("/api/cart/create_cart/", {
+    method: "POST",
   });
+}
 
-export const getCart = (cartId: number | string, token: string) =>
-  request(`/cart/${cartId}/`, { headers: { Authorization: `Token ${token}` } });
+// 🔹 Agregar producto
+export function addProduct(productId: number, quantity: number) {
+  return request("/api/cart/add_product/", {
+    method: "POST",
+    body: JSON.stringify({
+      product_id: productId,
+      quantity,
+    }),
+  });
+}
 
-export default { getCarts, createCart, addProduct, getCart };
+// 🔹 Obtener carrito por ID
+export function getCart(cartId: number | string) {
+  return request(`/api/cart/${cartId}/`);
+}

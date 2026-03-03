@@ -35,34 +35,40 @@ export default function CatalogPageClient() {
     [categories, selectedCategorySlug],
   );
 
-  const loadInitialData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [categoriesData, featuredData, productsData] = await Promise.all([
+const loadInitialData = useCallback(async () => {
+  setLoading(true);
+  setError(null);
+
+  try {
+    const [categoriesData, featuredData, productsData] =
+      await Promise.all([
         getCategories(),
         getFeaturedProducts(),
         getProducts({ page: 1, ordering: "name" }),
       ]);
 
-      setCategories(categoriesData);
-      setFeaturedProducts(featuredData);
-      setAllProducts(productsData.results);
-      setTotalProducts(productsData.count);
+    setCategories(categoriesData);
+    setFeaturedProducts(featuredData);
+    setAllProducts(productsData.results);
+    setTotalProducts(productsData.count);
 
-      if (categoriesData.length > 0) {
-        const firstSlug = categoriesData[0].slug;
-        setSelectedCategorySlug(firstSlug);
-        const byCategoryData = await getProductsByCategory(firstSlug, { ordering: "name" });
-        setCategoryProducts(byCategoryData.results);
-      }
-    } catch (err) {
-      console.error('loadInitialData error:', err);
-      setError("No se pudo cargar el catálogo. Intenta nuevamente.");
-    } finally {
-      setLoading(false);
+    if (categoriesData.length > 0) {
+      const firstSlug = categoriesData[0].slug;
+      setSelectedCategorySlug(firstSlug);
+
+      const byCategoryData = await getProductsByCategory(firstSlug, {
+        ordering: "name",
+      });
+
+      setCategoryProducts(byCategoryData.results);
     }
-  }, []);
+  } catch (err) {
+    console.error("loadInitialData error:", err);
+    setError("No se pudo cargar el catálogo. Intenta nuevamente.");
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   const loadAllProducts = useCallback(async () => {
     try {
@@ -99,65 +105,21 @@ export default function CatalogPageClient() {
   }, [loadInitialData]);
 
   useEffect(() => {
-    if (!loading) {
-      void loadAllProducts();
-    }
-  }, [loading, loadAllProducts]);
+    void loadAllProducts();
+  }, [page, ordering, search]);
 
   const router = useRouter();
   const { token } = useAuth();
 
-  // keep track of the active cart id so we reuse it instead of blindly
-  // picking the first element from the list (which might be an old empty
-  // cart).
-  const [activeCartId, setActiveCartId] = useState<number | null>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("cce_cart_id");
-      return stored ? parseInt(stored, 10) : null;
-    }
-    return null;
-  });
+const handleAddToCart = async (productId: number) => {
+  if (!token) return;
 
-  const handleAddToCart = async (productId: number) => {
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
-    try {
-      console.log('adding to cart, token', token);
-      let cartId = activeCartId;
-
-      if (!cartId) {
-        const carts = await cartApi.getCarts(token);
-        console.log('existing carts', carts);
-        if (Array.isArray(carts) && carts.length > 0) {
-          // pick the last (most recently created) cart, or one that already
-          // contains products if you prefer
-          const recent = carts[carts.length - 1];
-          cartId = recent.id;
-        }
-      }
-
-      if (!cartId) {
-        const created = await cartApi.createCart(token);
-        console.log('created cart', created);
-        cartId = created.id;
-      }
-
-      setActiveCartId(cartId as number);
-      if (typeof window !== "undefined") {
-        localStorage.setItem('cce_cart_id', String(cartId));
-      }
-
-      const added = await cartApi.addProduct(cartId as number, token, productId, 1);
-      console.log('addProduct response', added);
-      window.alert('Producto agregado al carrito');
-    } catch (err: any) {
-      console.error('add to cart error', err);
-      window.alert(err.message || 'Error agregando al carrito');
-    }
-  };
+  try {
+    await cartApi.addProduct(productId, 1, token);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const hasNextPage = page * 20 < totalProducts;
 

@@ -6,12 +6,6 @@ import * as authApi from "@/lib/auth-api";
 const TOKEN_KEY = "cce_token";
 
 export default function useAuth() {
-  // start with null; the true value lives in localStorage and will be
-  // populated after the component mounts on the client. Initializing from
-  // localStorage directly inside useState causes the value to be `null` on
-  // first render (because the SSR pass can't read window), and React won't
-  // re-run the initializer during hydration, so the token would stay null
-  // forever.
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<{ id: number; username: string } | null>(null);
 
@@ -38,14 +32,30 @@ export default function useAuth() {
     }
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const res = await authApi.login({ username, password });
-    if (res.token) {
-      saveToken(res.token);
-      setUser({ id: res.user_id, username: res.username });
-    }
-    return res;
-  }, [saveToken]);
+const login = useCallback(async (username: string, password: string) => {
+  const res = await fetch("http://localhost:8080/api/auth/login/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!res.ok) {
+    throw new Error("Credenciales inválidas");
+  }
+
+  const data = await res.json();
+
+  // ✅ usar la MISMA key definida arriba
+  saveToken(data.token);
+
+  // ✅ guardar usuario correctamente
+  setUser({
+    id: data.user_id,
+    username: data.username,
+  });
+}, [saveToken]);
 
   const register = useCallback(async (username: string, password: string, email?: string) => {
     const res = await authApi.register({ username, password, email });

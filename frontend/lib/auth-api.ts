@@ -22,7 +22,13 @@ export const register = (payload: { username: string; password: string; email?: 
 export const login = (payload: { username: string; password: string }) =>
   request('/auth/login/', { method: 'POST', body: JSON.stringify(payload) });
 
-export const logout = (token: string) =>
-  request('/auth/logout/', { method: 'POST', headers: { Authorization: `Token ${token}` } });
+export async function logout(token: string) {
+  return fetch("http://localhost:8080/api/auth/logout/", {
+    method: "POST",
+    headers: {
+      Authorization: `Token ${token}`,
+    },
+  });
+}
 
 export default { register, login, logout };

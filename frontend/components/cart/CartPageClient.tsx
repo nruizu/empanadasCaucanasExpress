@@ -35,36 +35,15 @@ export default function CartPageClient() {
 
     const load = async () => {
       try {
-        // if we previously stored a cart id (when adding products), try
-        // loading it directly rather than listing all carts.
-        let cartId: string | null = null;
-        if (typeof window !== "undefined") {
-          cartId = localStorage.getItem('cce_cart_id');
-        }
-        if (cartId) {
-          const detail = await cartApi.getCart(cartId, token);
-          setCart(detail);
-          return;
-        }
+        const cart = await cartApi.getMyCart(token);
+        setCart(cart);
 
-        const carts = await cartApi.getCarts(token);
-        if (Array.isArray(carts) && carts.length > 0) {
-          // prefer the most recently created cart, or one with items
-          let selected = carts[carts.length - 1];
-          for (let i = carts.length - 1; i >= 0; i--) {
-            if (carts[i].products && carts[i].products.length > 0) {
-              selected = carts[i];
-              break;
-            }
-          }
-          const detail = await cartApi.getCart(selected.id, token);
-          setCart(detail);
-        } else {
-          const created = await cartApi.createCart(token);
-          setCart(created);
+        // opcional: guarda el id actualizado
+        if (typeof window !== "undefined") {
+          localStorage.setItem("cce_cart_id", cart.id);
         }
       } catch (err: any) {
-        setError(err.message || 'Error cargando carrito');
+        setError(err.message || "Error cargando carrito");
       } finally {
         setLoading(false);
       }

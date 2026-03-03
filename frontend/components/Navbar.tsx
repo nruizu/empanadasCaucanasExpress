@@ -8,10 +8,11 @@ import * as cartApi from "@/lib/cart-api";
 
 export default function Navbar() {
   const router = useRouter();
-  const { token, user, logout } = useAuth();
+  const { token, logout } = useAuth();
   const [cartCount, setCartCount] = useState<number>(0);
+  const [open, setOpen] = useState(false);
 
-  // fetch cart count when token changes
+  // cargar carrito cuando cambia token
   useEffect(() => {
     if (!token) {
       setCartCount(0);
@@ -20,17 +21,8 @@ export default function Navbar() {
 
     const load = async () => {
       try {
-        const carts = await cartApi.getCarts(token);
-        let id: number | null = null;
-        if (Array.isArray(carts) && carts.length > 0) {
-          // find cart with items or most recent
-          const withItems = carts.find((c: any) => c.products?.length > 0);
-          id = withItems ? withItems.id : carts[carts.length - 1].id;
-        }
-        if (id != null) {
-          const detail = await cartApi.getCart(id, token);
-          setCartCount(detail.total_items || 0);
-        }
+        const cart = await cartApi.getMyCart(token);
+        setCartCount(cart.total_items || 0);
       } catch {
         setCartCount(0);
       }
@@ -41,64 +33,110 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await logout();
+    setOpen(false);
     router.push("/");
   };
 
   return (
-    <nav className="bg-white shadow">
-      <div className="mx-auto max-w-6xl px-4">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-[var(--cce-green-dark)]">
-              CCE
-            </Link>
-            <Link
-              href="/catalogo"
-              className="ml-8 text-sm font-medium text-[var(--cce-green-dark)] hover:underline"
-            >
-              Catálogo
-            </Link>
-          </div>
-          <div className="flex items-center gap-6">
-            {token ? (
-              <>
-                <Link
-                  href="/carrito"
-                  className="relative text-sm font-medium text-[var(--cce-green-dark)] hover:underline"
-                >
-                  Carrito
-                  {cartCount > 0 && (
-                    <span className="absolute -top-2 -right-3 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                      {cartCount}
-                    </span>
-                  )}
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm font-medium text-[var(--cce-green-dark)] hover:underline"
-                >
-                  Cerrar sesión
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="text-sm font-medium text-[var(--cce-green-dark)] hover:underline"
-                >
-                  Iniciar sesión
-                </Link>
-                <Link
-                  href="/registro"
-                  className="text-sm font-medium text-[var(--cce-green-dark)] hover:underline"
-                >
-                  Registrarse
-                </Link>
-              </>
-            )}
-          </div>
+    <>
+      {/* Top bar */}
+      <nav className="bg-white shadow px-4 h-16 flex items-center justify-between">
+        <button
+          onClick={() => setOpen(true)}
+          className="text-2xl font-bold text-[var(--cce-green-dark)]"
+        >
+          ☰
+        </button>
+
+        <Link
+          href="/"
+          className="text-xl font-bold text-[var(--cce-green-dark)]"
+        >
+          CCE
+        </Link>
+      </nav>
+
+      {/* Overlay */}
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 bg-black/40 z-40"
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-50 transform transition-transform duration-300 ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="p-6 flex flex-col gap-6">
+          <button
+            onClick={() => setOpen(false)}
+            className="self-end text-xl"
+          >
+            ✕
+          </button>
+
+          <Link
+            href="/"
+            onClick={() => setOpen(false)}
+            className="text-lg font-semibold"
+          >
+            Inicio
+          </Link>
+
+          <Link
+            href="/catalogo"
+            onClick={() => setOpen(false)}
+            className="text-lg font-semibold"
+          >
+            Catálogo
+          </Link>
+
+          {token ? (
+            <>
+              <Link
+                href="/carrito"
+                onClick={() => setOpen(false)}
+                className="relative text-lg font-semibold"
+              >
+                Carrito
+                {cartCount > 0 && (
+                  <span className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+
+              <button
+                onClick={handleLogout}
+                className="text-left text-lg font-semibold text-red-600"
+              >
+                Cerrar sesión
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="text-lg font-semibold"
+              >
+                Iniciar sesión
+              </Link>
+
+              <Link
+                href="/registro"
+                onClick={() => setOpen(false)}
+                className="text-lg font-semibold"
+              >
+                Registrarse
+              </Link>
+            </>
+          )}
         </div>
-      </div>
-    </nav>
+      </aside>
+    </>
   );
 }
