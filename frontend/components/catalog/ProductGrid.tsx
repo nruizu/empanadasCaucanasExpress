@@ -4,7 +4,7 @@ import type { Product } from "@/types/catalog";
 interface ProductGridProps {
   products: Product[];
   emptyMessage: string;
-  onAddToCart?: (productId: number) => void;
+  onAddToCart?: (productId: number, productName: string) => void;
 }
 
 export default function ProductGrid({ products, emptyMessage, onAddToCart }: ProductGridProps) {
@@ -19,7 +19,11 @@ export default function ProductGrid({ products, emptyMessage, onAddToCart }: Pro
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} />
+        <ProductCard
+          key={product.id}
+          product={product}
+          onAddToCart={onAddToCart}
+        />
       ))}
     </div>
   );

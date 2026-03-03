@@ -1,76 +1,100 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import * as authApi from "@/lib/auth-api";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import useAuth from "@/hooks/useAuth";
+import { useEffect, useRef, useState } from "react";
+import * as cartApi from "@/lib/cart-api";
 
-const TOKEN_KEY = "cce_token";
+export default function Navbar() {
+  const router = useRouter();
+  const { token, logout } = useAuth();
+  const [cartCount, setCartCount] = useState<number>(0);
+  const [open, setOpen] = useState(false);
 
-export default function useAuth() {
-  const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<{ id: number; username: string } | null>(null);
-
+  // ref para que loadCart siempre lea el token actualizado
+  const tokenRef = useRef(token);
   useEffect(() => {
-    // read localStorage after mount so the value is available on client
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (stored) {
-      setToken(stored);
-      // user info was already saved in login/register; leave user as-is
-    }
-  }, []);
-
-  useEffect(() => {
-    if (token) {
-      // we don't fetch user details now; store token and basic info in login response
-    }
+    tokenRef.current = token;
   }, [token]);
 
-  const saveToken = useCallback((t: string | null) => {
-    setToken(t);
-    if (typeof window !== "undefined") {
-      if (t) localStorage.setItem(TOKEN_KEY, t);
-      else localStorage.removeItem(TOKEN_KEY);
+  const loadCart = async () => {
+    const currentToken = tokenRef.current;
+    if (!currentToken) { setCartCount(0); return; }
+    try {
+      const cart = await cartApi.getMyCart();
+      setCartCount(cart.total_items || 0);
+    } catch {
+      setCartCount(0);
     }
-  }, []);
+  };
 
-const login = useCallback(async (username: string, password: string) => {
-  const res = await fetch("http://localhost:8080/api/auth/login/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ username, password }),
-  });
+  // Recarga cuando cambia el token
+  useEffect(() => {
+    loadCart();
+  }, [token]);
 
-  if (!res.ok) {
-    throw new Error("Credenciales inválidas");
-  }
+  // Listeners — loadCart siempre lee tokenRef.current, sin closure stale
+  useEffect(() => {
+    window.addEventListener("cart:updated", loadCart);
+    window.addEventListener("auth:changed", loadCart);
+    return () => {
+      window.removeEventListener("cart:updated", loadCart);
+      window.removeEventListener("auth:changed", loadCart);
+    };
+  }, []); // ← array vacío, se registra una sola vez
 
-  const data = await res.json();
+  const handleLogout = async () => {
+    await logout();
+    setCartCount(0);
+    setOpen(false);
+    router.push("/");
+  };
 
-  // ✅ usar la MISMA key definida arriba
-  saveToken(data.token);
+  return (
+    <>
+      <nav className="fixed top-0 left-0 right-0 z-30 bg-white shadow px-4 h-16 flex items-center justify-between">
+        <button onClick={() => setOpen(true)} className="text-2xl font-bold text-[var(--cce-green-dark)]">
+          ☰
+        </button>
+        <Link href="/" className="text-xl font-bold text-[var(--cce-green-dark)]">
+          CCE
+        </Link>
+      </nav>
 
-  // ✅ guardar usuario correctamente
-  setUser({
-    id: data.user_id,
-    username: data.username,
-  });
-}, [saveToken]);
+      <div className="h-16" />
 
-  const register = useCallback(async (username: string, password: string, email?: string) => {
-    const res = await authApi.register({ username, password, email });
-    if (res.token) {
-      saveToken(res.token);
-      setUser({ id: res.user_id, username: res.username });
-    }
-    return res;
-  }, [saveToken]);
+      {open && <div onClick={() => setOpen(false)} className="fixed inset-0 bg-black/40 z-40" />}
 
-  const logout = useCallback(async () => {
-    if (token) await authApi.logout(token).catch(() => null);
-    saveToken(null);
-    setUser(null);
-  }, [token, saveToken]);
+      <aside className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-50 transform transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}>
+        <div className="p-6 flex flex-col gap-6">
+          <button onClick={() => setOpen(false)} className="self-end text-xl">✕</button>
 
-  return { token, user, login, logout, register };
+          <Link href="/" onClick={() => setOpen(false)} className="text-lg font-semibold">Inicio</Link>
+          <Link href="/catalogo" onClick={() => setOpen(false)} className="text-lg font-semibold">Catálogo</Link>
+
+          {token ? (
+            <>
+              <Link href="/carrito" onClick={() => setOpen(false)} className="relative text-lg font-semibold">
+                Carrito
+                {cartCount > 0 && (
+                  <span className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+              <button onClick={handleLogout} className="text-left text-lg font-semibold text-red-600">
+                Cerrar sesión
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" onClick={() => setOpen(false)} className="text-lg font-semibold">Iniciar sesión</Link>
+              <Link href="/registro" onClick={() => setOpen(false)} className="text-lg font-semibold">Registrarse</Link>
+            </>
+          )}
+        </div>
+      </aside>
+    </>
+  );
 }

@@ -102,3 +102,41 @@ class CartViewSet(viewsets.ModelViewSet):
         cart.cart_products.all().delete()
         serializer = self.get_serializer(cart)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["patch"])
+    @transaction.atomic
+    def update_quantity(self, request):
+        """Update the quantity of a product in the cart."""
+        cart_product_id = request.data.get("cart_product_id")
+        quantity = request.data.get("quantity")
+
+        if not cart_product_id:
+            return Response(
+                {"error": "cart_product_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            quantity = int(quantity)
+            if quantity < 1:
+                raise ValueError
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "quantity must be a positive integer"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        cart = Cart.objects.get(user=request.user)
+
+        try:
+            cart_product = CartProduct.objects.get(id=cart_product_id, cart=cart)
+            cart_product.quantity = quantity
+            cart_product.save()
+        except CartProduct.DoesNotExist:
+            return Response(
+                {"error": "Product not found in cart"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = self.get_serializer(cart)
+        return Response(serializer.data)

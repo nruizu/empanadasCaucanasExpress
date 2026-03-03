@@ -3,7 +3,7 @@ import type { Product } from "@/types/catalog";
 
 interface ProductCardProps {
   product: Product;
-  onAddToCart?: (productId: number) => void;
+  onAddToCart?: (productId: number, productName: string) => void;
 }
 
 const formatPrice = (price: string) =>

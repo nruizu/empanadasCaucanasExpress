@@ -38,15 +38,13 @@ class CartSerializer(serializers.ModelSerializer):
         ]
 
     def get_total_price(self, obj):
-        # iterate over CartProduct instances rather than products (which would
-        # yield Product objects and lose quantity information)
         return sum(
             cp.product.price * cp.quantity
-            for cp in obj.cart_products.all()
+            for cp in obj.cart_products.select_related("product").all()
         )
 
     def get_total_items(self, obj):
         return sum(
             cp.quantity
-            for cp in obj.cart_products.all()
+            for cp in obj.cart_products.select_related("product").all()
         )

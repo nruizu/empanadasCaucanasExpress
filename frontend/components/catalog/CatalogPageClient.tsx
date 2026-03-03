@@ -1,8 +1,9 @@
 "use client";
 
+import CartConfirmModal from "@/components/cart/CartConfirmModal";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import useAuth from "@/hooks/useAuth";
+import useAuth from "@/context/AuthContext";
 import * as cartApi from "@/lib/cart-api";
 
 import CategoryCard from "@/components/catalog/CategoryCard";
@@ -29,6 +30,7 @@ export default function CatalogPageClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingCategoryProducts, setLoadingCategoryProducts] = useState(false);
+  const [confirmProduct, setConfirmProduct] = useState<string | null>(null);
 
   const selectedCategory = useMemo(
     () => categories.find((category) => category.slug === selectedCategorySlug),
@@ -111,11 +113,12 @@ const loadInitialData = useCallback(async () => {
   const router = useRouter();
   const { token } = useAuth();
 
-const handleAddToCart = async (productId: number) => {
-  if (!token) return;
-
+const handleAddToCart = async (productId: number, productName: string) => {
+  if (!token) { router.push("/login"); return; }
   try {
-    await cartApi.addProduct(productId, 1, token);
+    await cartApi.addProduct(productId, 1);
+    window.dispatchEvent(new CustomEvent("cart:updated"));
+    setConfirmProduct(productName);
   } catch (err) {
     console.error(err);
   }
@@ -263,6 +266,13 @@ const handleAddToCart = async (productId: number) => {
           </div>
         </section>
       </div>
+      {confirmProduct && (
+        <CartConfirmModal
+          productName={confirmProduct}
+          onClose={() => setConfirmProduct(null)}
+          onGoToCart={() => { setConfirmProduct(null); router.push("/carrito"); }}
+        />
+      )}
     </main>
   );
 }
