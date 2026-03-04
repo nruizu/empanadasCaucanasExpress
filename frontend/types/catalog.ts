@@ -17,6 +17,23 @@ export interface Product {
   category: Category;
 }
 
+export interface ProductVariant {
+  id: number;
+  name: string;
+  price: string;
+  image: string;
+  label: string;
+}
+
+export interface CatalogProduct {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  category: Category;
+  variants: ProductVariant[];
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
