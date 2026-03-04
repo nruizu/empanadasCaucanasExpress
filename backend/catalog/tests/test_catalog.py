@@ -91,7 +91,8 @@ class CatalogFullFlowTest(TestCase):
         def step_1():
             categories_response = self.client.get("/api/categories/")
             self.assertEqual(categories_response.status_code, 200)
-            category_slugs = [item["slug"] for item in categories_response.data]
+            item_slug = [item["slug"] for item in categories_response.data]
+            category_slugs = item_slug
             self.assertIn("entradas", category_slugs)
             self.assertIn("para-llevar", category_slugs)
             self.assertNotIn("inactiva", category_slugs)
@@ -102,25 +103,31 @@ class CatalogFullFlowTest(TestCase):
             products_response = self.client.get("/api/products/")
             self.assertEqual(products_response.status_code, 200)
             self.assertIn("results", products_response.data)
-            product_slugs = [item["slug"] for item in products_response.data["results"]]
+            product_slugs = []
+            for item in products_response.data["results"]:
+                product_slugs.append(item["slug"])
             self.assertIn(self.prod_empanada.slug, product_slugs)
             self.assertIn(self.prod_caucanita.slug, product_slugs)
             self.assertIn(self.prod_chorizo_pack.slug, product_slugs)
             self.assertNotIn("entradas-oculto", product_slugs)
             self.assertNotIn("inactiva-producto", product_slugs)
 
-        self._run_step(2, "Verificando listado general de productos activos", step_2)
+        step_message = "Verificando listado general de productos activos"
+        self._run_step(2, step_message, step_2)
 
         def step_3():
-            featured_response = self.client.get("/api/products/featured/")
+            featured_response = self.client.get("/api/products/ \
+                                                featured/")
             self.assertEqual(featured_response.status_code, 200)
             featured_slugs = [item["slug"] for item in featured_response.data]
             self.assertEqual(featured_slugs, [self.prod_caucanita.slug])
 
-        self._run_step(3, "Verificando endpoint de productos destacados", step_3)
+        step_message = "Verificando endpoint de productos destacados"
+        self._run_step(3, step_message, step_3)
 
         def step_4():
-            by_category_response = self.client.get("/api/categories/entradas/products/")
+            g_products = self.client.get("/api/categories/entradas/products/")
+            by_category_response = g_products
             self.assertEqual(by_category_response.status_code, 200)
             by_category_slugs = [
                 item["slug"] for item in by_category_response.data["results"]
@@ -145,10 +152,10 @@ class CatalogFullFlowTest(TestCase):
                 {"category": "para-llevar"},
             )
             self.assertEqual(filter_category_response.status_code, 200)
-            filter_category_slugs = [
-                item["slug"] for item in filter_category_response.data["results"]
-            ]
-            self.assertEqual(filter_category_slugs, [self.prod_chorizo_pack.slug])
+            filter_cat_slugs = []
+            for item in filter_category_response.data["results"]:
+                filter_cat_slugs.append(item["slug"])
+            self.assertEqual(filter_cat_slugs, [self.prod_chorizo_pack.slug])
 
         self._run_step(6, "Verificando filtro por categoría", step_6)
 
@@ -163,22 +170,32 @@ class CatalogFullFlowTest(TestCase):
             ]
             self.assertEqual(filter_price_slugs, [self.prod_empanada.slug])
 
-        self._run_step(7, "Verificando filtro por rango de precios", step_7)
+        step_message = "Verificando filtro por rango de precios"
+        self._run_step(7, step_message, step_7)
 
         def step_8():
-            search_response = self.client.get("/api/products/", {"search": "caucanita"})
+            # Search product "caucanita"
+            s_p = self.client.get("/api/products/", {"search": "caucanita"})
+            search_response = s_p
             self.assertEqual(search_response.status_code, 200)
-            search_slugs = [item["slug"] for item in search_response.data["results"]]
+            search_slugs = []
+            for item in search_response.data["results"]:
+                search_slugs.append(item["slug"])
             self.assertEqual(search_slugs, [self.prod_caucanita.slug])
 
         self._run_step(8, "Verificando búsqueda por texto", step_8)
 
         def step_9():
-            ordering_response = self.client.get("/api/products/", {"ordering": "-price"})
+            ordering_response = self.client.get(
+                "/api/products/", {"ordering": "-price"}
+            )
             self.assertEqual(ordering_response.status_code, 200)
-            ordering_slugs = [item["slug"] for item in ordering_response.data["results"]]
+            ordering_slugs = [
+                item["slug"] for item in ordering_response.data["results"]
+            ]
             self.assertEqual(ordering_slugs[0], self.prod_chorizo_pack.slug)
 
-        self._run_step(9, "Verificando ordenamiento por precio descendente", step_9)
+        step_message = "Verificando ordenamiento por precio descendente"
+        self._run_step(9, step_message, step_9)
 
-        print(f"{self.GREEN}✅ Flujo integral validado correctamente.{self.RESET}")
+        print(f"{self.GREEN}✅ Flujo validado correctamente.{self.RESET}")
