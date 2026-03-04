@@ -1,6 +1,10 @@
 "use client";
 
+import CartConfirmModal from "@/components/cart/CartConfirmModal";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import useAuth from "@/context/AuthContext";
+import * as cartApi from "@/lib/cart-api";
 
 import CategoryCard from "@/components/catalog/CategoryCard";
 import ProductGrid from "@/components/catalog/ProductGrid";
@@ -107,17 +111,20 @@ export default function CatalogPageClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingCategoryProducts, setLoadingCategoryProducts] = useState(false);
+  const [confirmProduct, setConfirmProduct] = useState<string | null>(null);
 
   const selectedCategory = useMemo(
     () => categories.find((category) => category.slug === selectedCategorySlug),
     [categories, selectedCategorySlug],
   );
 
-  const loadInitialData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [categoriesData, featuredData, productsData] = await Promise.all([
+const loadInitialData = useCallback(async () => {
+  setLoading(true);
+  setError(null);
+
+  try {
+    const [categoriesData, featuredData, productsData] =
+      await Promise.all([
         getCategories(),
         getFeaturedProducts(),
         getProducts({ page: 1, ordering: "name" }),
@@ -139,7 +146,13 @@ export default function CatalogPageClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  } catch (err) {
+    console.error("loadInitialData error:", err);
+    setError("No se pudo cargar el catálogo. Intenta nuevamente.");
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   const loadAllProducts = useCallback(async () => {
     try {
@@ -151,7 +164,8 @@ export default function CatalogPageClient() {
       setAllProducts(groupProductsWithVariants(data.results));
       setTotalProducts(data.count);
       setError(null);
-    } catch {
+    } catch (err) {
+      console.error('loadAllProducts error:', err);
       setError("No se pudieron actualizar los productos.");
     }
   }, [ordering, page, search]);
@@ -174,14 +188,22 @@ export default function CatalogPageClient() {
   }, [loadInitialData]);
 
   useEffect(() => {
-    if (!loading) {
-      void loadAllProducts();
-    }
-  }, [loading, loadAllProducts]);
+    void loadAllProducts();
+  }, [page, ordering, search]);
 
-  const handleAddToCart = (productId: number) => {
-    void productId;
-  };
+  const router = useRouter();
+  const { token } = useAuth();
+
+const handleAddToCart = async (productId: number, productName: string) => {
+  if (!token) { router.push("/login"); return; }
+  try {
+    await cartApi.addProduct(productId, 1);
+    window.dispatchEvent(new CustomEvent("cart:updated"));
+    setConfirmProduct(productName);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const hasNextPage = page * 20 < totalProducts;
 
@@ -325,6 +347,13 @@ export default function CatalogPageClient() {
           </div>
         </section>
       </div>
+      {confirmProduct && (
+        <CartConfirmModal
+          productName={confirmProduct}
+          onClose={() => setConfirmProduct(null)}
+          onGoToCart={() => { setConfirmProduct(null); router.push("/carrito"); }}
+        />
+      )}
     </main>
   );
 }

@@ -3,17 +3,12 @@
 interface AddToCartButtonProps {
   productId: number;
   productName: string;
-  onAdd?: (productId: number) => void;
+  onAdd?: (productId: number, productName: string) => void;
 }
 
 export default function AddToCartButton({ productId, productName, onAdd }: AddToCartButtonProps) {
   const handleClick = () => {
-    onAdd?.(productId);
-    window.dispatchEvent(
-      new CustomEvent("catalog:add-to-cart", {
-        detail: { productId, productName },
-      }),
-    );
+    onAdd?.(productId, productName); // 👈 agregar productName
   };
 
   return (
