@@ -4,21 +4,10 @@ import sys
 from pathlib import Path
 
 import django
+from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.text import slugify
-
-
-def _setup_django():
-    project_root = Path(__file__).resolve().parents[4]
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.config.settings")
-    django.setup()
-
-
-_setup_django()
-
-from backend.catalog.models import Category, Product  # noqa: E402
+from backend.catalog.models import Category, Product
 
 
 @transaction.atomic
@@ -203,5 +192,17 @@ def run_seed_products():
     print(f"Seed de catálogo completado. Productos procesados: {processed}")
 
 
+class Command(BaseCommand):
+    help = "Seed de categorías y productos del catálogo"
+
+    def handle(self, *args, **options):
+        run_seed_products()
+
+
 if __name__ == "__main__":
+    project_root = Path(__file__).resolve().parents[4]
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.config.settings")
+    django.setup()
     run_seed_products()

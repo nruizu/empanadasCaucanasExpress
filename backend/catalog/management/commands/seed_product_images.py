@@ -3,21 +3,10 @@ import sys
 from pathlib import Path
 
 import django
+from django.core.management.base import BaseCommand
 from django.core.files import File
 from django.utils.text import slugify
-
-
-def _setup_django():
-    project_root = Path(__file__).resolve().parents[4]
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.config.settings")
-    django.setup()
-
-
-_setup_django()
-
-from backend.catalog.models import Product  # noqa: E402
+from backend.catalog.models import Product
 
 ALIASES = {
     "papita-rellena": "ppa_rellena",
@@ -181,7 +170,26 @@ def run_seed_product_images(images_dir: str = "backend/catalog/seed_images"):
             print(f"- {slug}")
 
 
+class Command(BaseCommand):
+    help = "Seed de imágenes para productos"
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--images-dir",
+            default="backend/catalog/seed_images",
+            help="Ruta de imágenes a cargar",
+        )
+
+    def handle(self, *args, **options):
+        run_seed_product_images(images_dir=options["images_dir"])
+
+
 if __name__ == "__main__":
+    project_root = Path(__file__).resolve().parents[4]
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.config.settings")
+    django.setup()
     if len(sys.argv) > 1:
         images_dir_arg = sys.argv[1]
     else:
