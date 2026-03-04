@@ -63,7 +63,6 @@ class CartViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["delete"])
     def remove_product(self, request, pk=None):
-        """Remove a product from the cart."""
         cart = self.get_object()
         cart_product_id = request.data.get("cart_product_id")
 
@@ -74,8 +73,7 @@ class CartViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            cart_items = Cart.objects.get(id=cart_product_id, cart=cart)
-            cart_product = cart_items
+            cart_product = CartProduct.objects.get(id=cart_product_id, cart=cart)
             cart_product.delete()
         except CartProduct.DoesNotExist:
             return Response(
@@ -87,7 +85,6 @@ class CartViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["delete"])
     def clear_cart(self, request, pk=None):
-        """Clear all products from the cart."""
         cart = self.get_object()
         cart.cart_products.all().delete()
         serializer = self.get_serializer(cart)
@@ -96,7 +93,6 @@ class CartViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["patch"])
     @transaction.atomic
     def update_quantity(self, request):
-        """Update the quantity of a product in the cart."""
         cart_product_id = request.data.get("cart_product_id")
         quantity = request.data.get("quantity")
 
@@ -119,8 +115,7 @@ class CartViewSet(viewsets.ModelViewSet):
         cart = Cart.objects.get(user=request.user)
 
         try:
-            cart_items = Cart.objects.get(id=cart_product_id, cart=cart)
-            cart_product = cart_items
+            cart_product = CartProduct.objects.get(id=cart_product_id, cart=cart)
             cart_product.quantity = quantity
             cart_product.save()
         except CartProduct.DoesNotExist:

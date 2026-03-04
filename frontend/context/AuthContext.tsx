@@ -51,13 +51,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token]);
 
   const register = useCallback(async (username: string, password: string, email?: string) => {
-    const res = await authApi.register({ username, password, email });
-    if (res.token) {
-      saveToken(res.token);
-      setUser({ id: res.user_id, username: res.username });
-      window.dispatchEvent(new CustomEvent("auth:changed"));
-    }
-    return res;
+    const data = await authApi.register({ username, password, email }); // si falla, throw llega al catch de RegisterPage
+    saveToken(data.token);
+    setUser({ id: data.user_id, username: data.username });
+    window.dispatchEvent(new CustomEvent("auth:changed"));
+    return data;
   }, []);
 
   return (

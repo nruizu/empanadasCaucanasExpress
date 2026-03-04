@@ -11,13 +11,30 @@ async function request(path: string, options: RequestInit = {}) {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    // Si tiene campos de validación (password, username, etc), lanza el objeto completo
+    const hasFieldErrors = Object.keys(body).some((k) => k !== "detail" && k !== "error");
+    if (hasFieldErrors) throw body;
     throw new Error(body.detail || body.error || res.statusText);
   }
+
   return res.json().catch(() => ({}));
 }
 
-export const register = (payload: { username: string; password: string; email?: string }) =>
-  request('/auth/registro/', { method: 'POST', body: JSON.stringify(payload) });
+export async function register({ username, password, email }: { username: string; password: string; email?: string }) {
+  const res = await fetch("http://localhost:8080/api/auth/registro/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password, email }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw data;
+  }
+
+  return data;
+}
 
 export const login = (payload: { username: string; password: string }) =>
   request('/auth/login/', { method: 'POST', body: JSON.stringify(payload) });

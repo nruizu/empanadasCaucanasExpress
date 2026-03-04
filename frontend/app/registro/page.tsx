@@ -18,7 +18,14 @@ export default function RegisterPage() {
       await register(username, password, email);
       router.push('/catalogo');
     } catch (err: any) {
-      setError(err.message || 'Register failed');
+      const msg =
+        err?.password?.[0] ||
+        err?.username?.[0] ||
+        err?.email?.[0] ||
+        err?.non_field_errors?.[0] ||
+        err?.message ||
+        "Error al registrarse";
+      setError(msg);
     }
   };
 
