@@ -7,11 +7,12 @@ from .models import Cart, CartProduct
 
 
 class CartProductSerializer(serializers.ModelSerializer):
+    # Nested product details for read operations, but allow setting product by ID for writes
     product = ProductSerializer(read_only=True)
     product_id = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.filter(is_active=True),
         write_only=True,
-        source="product"
+        source="product",
     )
 
     class Meta:
@@ -20,8 +21,7 @@ class CartProductSerializer(serializers.ModelSerializer):
 
 
 class CartSerializer(serializers.ModelSerializer):
-    # alias products to the through model so the frontend keeps the same
-    # schema it was originally expecting (items with product and quantity).
+    # Represent cart products with nested product details
     products = CartProductSerializer(many=True, read_only=True, source="cart_products")
     total_price = serializers.SerializerMethodField()
     total_items = serializers.SerializerMethodField()
@@ -44,7 +44,5 @@ class CartSerializer(serializers.ModelSerializer):
         )
 
     def get_total_items(self, obj):
-        return sum(
-            cp.quantity
-            for cp in obj.cart_products.select_related("product").all()
-        )
+        cart_items = obj.cart_products.select_related("product").all()
+        return sum(cp.quantity for cp in cart_items)

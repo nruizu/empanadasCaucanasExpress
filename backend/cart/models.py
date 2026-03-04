@@ -2,8 +2,8 @@ from django.db import models
 
 # Create your models here.
 
+
 class CartProduct(models.Model):
-    # Use a distinct related_name to avoid clashing with Cart.products (ManyToManyField)
     cart = models.ForeignKey(
         "Cart",
         on_delete=models.CASCADE,
@@ -16,8 +16,8 @@ class CartProduct(models.Model):
     def __str__(self) -> str:
         return f"{self.quantity} of {self.product.name} in Cart {self.cart.id}"
 
+
 class Cart(models.Model):
-    # Optional owner for authenticated carts
     user = models.ForeignKey(
         "auth.User",
         null=True,

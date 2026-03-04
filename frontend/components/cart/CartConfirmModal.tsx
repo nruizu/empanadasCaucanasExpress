@@ -9,7 +9,6 @@ interface Props {
 }
 
 export default function CartConfirmModal({ productName, onClose, onGoToCart }: Props) {
-  // Cerrar con Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
@@ -18,17 +17,14 @@ export default function CartConfirmModal({ productName, onClose, onGoToCart }: P
 
   return (
     <>
-      {/* Backdrop */}
       <div
         onClick={onClose}
         className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"
       >
-        {/* Modal — stopPropagation para que el click adentro no cierre */}
         <div
           onClick={(e) => e.stopPropagation()}
           className="bg-white rounded-2xl shadow-xl p-6 w-80 flex flex-col items-center gap-4 z-51"
         >
-          {/* Ícono check */}
           <div className="h-14 w-14 rounded-full bg-green-100 flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

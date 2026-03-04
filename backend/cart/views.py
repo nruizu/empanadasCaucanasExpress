@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 
 from .models import Cart, CartProduct
-from .serializers import CartSerializer, CartProductSerializer
+from .serializers import CartSerializer
 
 
 class CartViewSet(viewsets.ModelViewSet):
@@ -14,7 +14,7 @@ class CartViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Cart.objects.filter(user=self.request.user)
-    
+
     @action(detail=False, methods=["get"])
     def my_cart(self, request):
         cart, _ = Cart.objects.get_or_create(user=request.user)
@@ -23,7 +23,6 @@ class CartViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def create_cart(self, request):
-        """Create a new cart owned by the authenticated user."""
         cart = Cart.objects.create(user=request.user)
         serializer = self.get_serializer(cart)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -31,18 +30,12 @@ class CartViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"])
     @transaction.atomic
     def add_product(self, request):
-        """
-        Add a product to the authenticated user's cart.
-        Automatically creates cart if it doesn't exist.
-        """
-
         product_id = request.data.get("product_id")
         quantity = request.data.get("quantity", 1)
 
         if not product_id:
             return Response(
-                {"error": "product_id is required"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "product_id is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
@@ -52,16 +45,13 @@ class CartViewSet(viewsets.ModelViewSet):
         except (ValueError, TypeError):
             return Response(
                 {"error": "quantity must be a positive integer"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 🔥 ESTA ES LA CLAVE
         cart, _ = Cart.objects.get_or_create(user=request.user)
 
         cart_product, created = CartProduct.objects.get_or_create(
-            cart=cart,
-            product_id=product_id,
-            defaults={"quantity": quantity}
+            cart=cart, product_id=product_id, defaults={"quantity": quantity}
         )
 
         if not created:
@@ -80,16 +70,16 @@ class CartViewSet(viewsets.ModelViewSet):
         if not cart_product_id:
             return Response(
                 {"error": "cart_product_id is required"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
-            cart_product = CartProduct.objects.get(id=cart_product_id, cart=cart)
+            cart_items = Cart.objects.get(id=cart_product_id, cart=cart)
+            cart_product = cart_items
             cart_product.delete()
         except CartProduct.DoesNotExist:
             return Response(
-                {"error": "Product not found in cart"},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Product not found in cart"}, status=status.HTTP_404_NOT_FOUND
             )
 
         serializer = self.get_serializer(cart)
@@ -113,7 +103,7 @@ class CartViewSet(viewsets.ModelViewSet):
         if not cart_product_id:
             return Response(
                 {"error": "cart_product_id is required"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
@@ -123,19 +113,19 @@ class CartViewSet(viewsets.ModelViewSet):
         except (ValueError, TypeError):
             return Response(
                 {"error": "quantity must be a positive integer"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         cart = Cart.objects.get(user=request.user)
 
         try:
-            cart_product = CartProduct.objects.get(id=cart_product_id, cart=cart)
+            cart_items = Cart.objects.get(id=cart_product_id, cart=cart)
+            cart_product = cart_items
             cart_product.quantity = quantity
             cart_product.save()
         except CartProduct.DoesNotExist:
             return Response(
-                {"error": "Product not found in cart"},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Product not found in cart"}, status=status.HTTP_404_NOT_FOUND
             )
 
         serializer = self.get_serializer(cart)

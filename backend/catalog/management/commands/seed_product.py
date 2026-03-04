@@ -6,7 +6,6 @@ from django.utils.text import slugify
 from backend.catalog.models import Category, Product
 
 
-
 @transaction.atomic
 def run_seed_products():
     categories_data = [
@@ -197,4 +196,3 @@ class Command(BaseCommand):
         self.stdout.write("Running catalog seed...")
         run_seed_products()
         self.stdout.write(self.style.SUCCESS("Catalog seed finished."))
-

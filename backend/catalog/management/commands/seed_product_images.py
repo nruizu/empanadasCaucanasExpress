@@ -184,5 +184,3 @@ class Command(BaseCommand):
         self.stdout.write(f"Seeding images from {images_dir}")
         run_seed_product_images(images_dir=images_dir)
         self.stdout.write(self.style.SUCCESS("Image seed completed."))
-
-
