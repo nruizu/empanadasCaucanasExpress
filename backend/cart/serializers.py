@@ -7,7 +7,8 @@ from .models import Cart, CartProduct
 
 
 class CartProductSerializer(serializers.ModelSerializer):
-    # Nested product details for read operations, but allow setting product by ID for writes
+    # Nested product details for read operations,
+    # but allow setting product by ID for writes
     product = ProductSerializer(read_only=True)
     product_id = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.filter(is_active=True),
