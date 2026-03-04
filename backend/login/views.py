@@ -33,7 +33,6 @@ def login_view(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def register_view(request):
-    """Create a new user account."""
     serializer = UserRegistrationSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()

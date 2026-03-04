@@ -63,7 +63,6 @@ class CartViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["delete"])
     def remove_product(self, request, pk=None):
-        """Remove a product from the cart."""
         cart = self.get_object()
         cart_product_id = request.data.get("cart_product_id")
 
@@ -86,7 +85,6 @@ class CartViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["delete"])
     def clear_cart(self, request, pk=None):
-        """Clear all products from the cart."""
         cart = self.get_object()
         cart.cart_products.all().delete()
         serializer = self.get_serializer(cart)
@@ -95,7 +93,6 @@ class CartViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["patch"])
     @transaction.atomic
     def update_quantity(self, request):
-        """Update the quantity of a product in the cart."""
         cart_product_id = request.data.get("cart_product_id")
         quantity = request.data.get("quantity")
 
@@ -123,8 +120,7 @@ class CartViewSet(viewsets.ModelViewSet):
             cart_product.save()
         except CartProduct.DoesNotExist:
             return Response(
-                {"error": "Product not found in cart"},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Product not found in cart"}, status=status.HTTP_404_NOT_FOUND
             )
 
         serializer = self.get_serializer(cart)
