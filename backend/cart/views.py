@@ -74,8 +74,7 @@ class CartViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            cart_items = Cart.objects.get(id=cart_product_id, cart=cart)
-            cart_product = cart_items
+            cart_product = CartProduct.objects.get(id=cart_product_id, cart=cart)
             cart_product.delete()
         except CartProduct.DoesNotExist:
             return Response(
@@ -119,13 +118,13 @@ class CartViewSet(viewsets.ModelViewSet):
         cart = Cart.objects.get(user=request.user)
 
         try:
-            cart_items = Cart.objects.get(id=cart_product_id, cart=cart)
-            cart_product = cart_items
+            cart_product = CartProduct.objects.get(id=cart_product_id, cart=cart)
             cart_product.quantity = quantity
             cart_product.save()
         except CartProduct.DoesNotExist:
             return Response(
-                {"error": "Product not found in cart"}, status=status.HTTP_404_NOT_FOUND
+                {"error": "Product not found in cart"},
+                status=status.HTTP_404_NOT_FOUND
             )
 
         serializer = self.get_serializer(cart)

@@ -130,21 +130,16 @@ const loadInitialData = useCallback(async () => {
         getProducts({ page: 1, ordering: "name" }),
       ]);
 
-      setCategories(categoriesData);
-      setFeaturedProducts(groupProductsWithVariants(featuredData));
-      setAllProducts(groupProductsWithVariants(productsData.results));
-      setTotalProducts(productsData.count);
+    setCategories(categoriesData);
+    setFeaturedProducts(groupProductsWithVariants(featuredData));
+    setAllProducts(groupProductsWithVariants(productsData.results));
+    setTotalProducts(productsData.count);
 
-      if (categoriesData.length > 0) {
-        const firstSlug = categoriesData[0].slug;
-        setSelectedCategorySlug(firstSlug);
-        const byCategoryData = await getProductsByCategory(firstSlug, { ordering: "name" });
-        setCategoryProducts(groupProductsWithVariants(byCategoryData.results));
-      }
-    } catch {
-      setError("No se pudo cargar el catálogo. Intenta nuevamente.");
-    } finally {
-      setLoading(false);
+    if (categoriesData.length > 0) {
+      const firstSlug = categoriesData[0].slug;
+      setSelectedCategorySlug(firstSlug);
+      const byCategoryData = await getProductsByCategory(firstSlug, { ordering: "name" });
+      setCategoryProducts(groupProductsWithVariants(byCategoryData.results));
     }
   } catch (err) {
     console.error("loadInitialData error:", err);
