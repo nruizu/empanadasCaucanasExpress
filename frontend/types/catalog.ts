@@ -13,6 +13,7 @@ export interface Product {
   price: string;
   image: string;
   is_featured: boolean;
+  is_active?: boolean;
   // Sends the category within product information
   category: Category;
 }

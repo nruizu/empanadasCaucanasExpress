@@ -26,3 +26,27 @@ class ProductSerializer(serializers.ModelSerializer):
             "is_featured",
             "category",
         )
+
+
+class ProductAdminSerializer(serializers.ModelSerializer):
+    category_id = serializers.PrimaryKeyRelatedField(
+        source="category",
+        queryset=Category.objects.all(),
+        write_only=True,
+    )
+    category = CategorySerializer(read_only=True)
+
+    class Meta:
+        model = Product
+        fields = (
+            "id",
+            "name",
+            "slug",
+            "description",
+            "price",
+            "image",
+            "is_featured",
+            "is_active",
+            "category",
+            "category_id",
+        )

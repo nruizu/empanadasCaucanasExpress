@@ -7,22 +7,17 @@ const TOKEN_KEY = "cce_token";
 
 interface AuthContextType {
   token: string | null;
-  user: { id: number; username: string } | null;
+  user: { id: number; username: string; is_staff: boolean } | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  register: (username: string, password: string, email?: string) => Promise<any>;
+  register: (username: string, password: string, email?: string) => Promise<unknown>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<{ id: number; username: string } | null>(null);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (stored) setToken(stored);
-  }, []);
+  const [user, setUser] = useState<{ id: number; username: string; is_staff: boolean } | null>(null);
 
   const saveToken = (t: string | null) => {
     setToken(t);
@@ -30,16 +25,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else localStorage.removeItem(TOKEN_KEY);
   };
 
+  useEffect(() => {
+    const stored = localStorage.getItem(TOKEN_KEY);
+    if (stored) setToken(stored);
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
+      setUser(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadCurrentUser = async () => {
+      try {
+        const data = await authApi.me(token);
+        if (cancelled) return;
+        setUser({
+          id: data.user_id,
+          username: data.username,
+          is_staff: Boolean(data.is_staff),
+        });
+      } catch {
+        if (cancelled) return;
+        saveToken(null);
+        setUser(null);
+      }
+    };
+
+    void loadCurrentUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
   const login = useCallback(async (username: string, password: string) => {
-    const res = await fetch("http://localhost:8080/api/auth/login/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    if (!res.ok) throw new Error("Credenciales inválidas");
-    const data = await res.json();
+    const data = await authApi.login({ username, password });
     saveToken(data.token);
-    setUser({ id: data.user_id, username: data.username });
+    setUser({
+      id: data.user_id,
+      username: data.username,
+      is_staff: Boolean(data.is_staff),
+    });
     window.dispatchEvent(new CustomEvent("auth:changed"));
   }, []);
 
@@ -53,7 +82,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(async (username: string, password: string, email?: string) => {
     const data = await authApi.register({ username, password, email }); // si falla, throw llega al catch de RegisterPage
     saveToken(data.token);
-    setUser({ id: data.user_id, username: data.username });
+    setUser({
+      id: data.user_id,
+      username: data.username,
+      is_staff: Boolean(data.is_staff),
+    });
     window.dispatchEvent(new CustomEvent("auth:changed"));
     return data;
   }, []);

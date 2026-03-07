@@ -116,8 +116,7 @@ class CatalogFullFlowTest(TestCase):
         self._run_step(2, step_message, step_2)
 
         def step_3():
-            featured_response = self.client.get("/api/products/ \
-                                                featured/")
+            featured_response = self.client.get("/api/products/featured/")
             self.assertEqual(featured_response.status_code, 200)
             featured_slugs = [item["slug"] for item in featured_response.data]
             self.assertEqual(featured_slugs, [self.prod_caucanita.slug])
