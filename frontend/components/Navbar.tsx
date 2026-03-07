@@ -8,7 +8,7 @@ import * as cartApi from "@/lib/cart-api";
 
 export default function Navbar() {
   const router = useRouter();
-  const { token, logout } = useAuth();
+  const { token, user, logout } = useAuth();
   const [cartCount, setCartCount] = useState<number>(0);
   const [open, setOpen] = useState(false);
 
@@ -83,6 +83,12 @@ export default function Navbar() {
           <button onClick={() => setOpen(false)} className="self-end text-xl">✕</button>
 
           <Link href="/" onClick={() => setOpen(false)} className="text-lg font-semibold">Inicio</Link>
+
+          {token && user?.is_staff && (
+            <Link href="/admin/catalogo" onClick={() => setOpen(false)} className="text-lg font-semibold">
+              Gestión catálogo
+            </Link>
+          )}
 
           {token ? (
             <button onClick={handleLogout} className="text-left text-lg font-semibold text-red-600">

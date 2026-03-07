@@ -26,7 +26,12 @@ def login_view(request):
         )
 
     token, _ = Token.objects.get_or_create(user=user)
-    info = {"token": token.key, "user_id": user.id, "username": user.username}
+    info = {
+        "token": token.key,
+        "user_id": user.id,
+        "username": user.username,
+        "is_staff": user.is_staff,
+    }
     return Response(info)
 
 
@@ -37,7 +42,12 @@ def register_view(request):
     if serializer.is_valid():
         user = serializer.save()
         token, _ = Token.objects.get_or_create(user=user)
-        info = {"token": token.key, "user_id": user.id, "username": user.username}
+        info = {
+            "token": token.key,
+            "user_id": user.id,
+            "username": user.username,
+            "is_staff": user.is_staff,
+        }
         return Response(
             info,
             status=status.HTTP_201_CREATED,
@@ -50,3 +60,17 @@ def register_view(request):
 def logout_view(request):
     request.user.auth_token.delete()
     return Response({"message": "Logged out successfully"}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def me_view(request):
+    user = request.user
+    return Response(
+        {
+            "user_id": user.id,
+            "username": user.username,
+            "is_staff": user.is_staff,
+        },
+        status=status.HTTP_200_OK,
+    )

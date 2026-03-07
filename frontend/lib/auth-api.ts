@@ -21,7 +21,7 @@ async function request(path: string, options: RequestInit = {}) {
 }
 
 export async function register({ username, password, email }: { username: string; password: string; email?: string }) {
-  const res = await fetch("http://localhost:8080/api/auth/registro/", {
+  const res = await fetch(`${API_BASE_URL}/auth/registro/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password, email }),
@@ -40,7 +40,7 @@ export const login = (payload: { username: string; password: string }) =>
   request('/auth/login/', { method: 'POST', body: JSON.stringify(payload) });
 
 export async function logout(token: string) {
-  return fetch("http://localhost:8080/api/auth/logout/", {
+  return fetch(`${API_BASE_URL}/auth/logout/`, {
     method: "POST",
     headers: {
       Authorization: `Token ${token}`,
@@ -48,4 +48,13 @@ export async function logout(token: string) {
   });
 }
 
-export default { register, login, logout };
+export async function me(token: string) {
+  return request('/auth/me/', {
+    method: 'GET',
+    headers: {
+      Authorization: `Token ${token}`,
+    },
+  });
+}
+
+export default { register, login, logout, me };

@@ -1,9 +1,10 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, generics
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAdminUser
 
 from .models import Category, Product
-from .serializers import CategorySerializer, ProductSerializer
+from .serializers import CategorySerializer, ProductAdminSerializer, ProductSerializer
 
 
 class ProductPagination(PageNumberPagination):
@@ -68,3 +69,22 @@ class CategoryProductListView(ActiveProductBaseListView):
             is_active=True,
         )
         return super().get_queryset().filter(category=category)
+
+
+class AdminProductListCreateView(generics.ListCreateAPIView):
+    serializer_class = ProductAdminSerializer
+    permission_classes = (IsAdminUser,)
+    pagination_class = ProductPagination
+    filter_backends = (filters.OrderingFilter, filters.SearchFilter)
+    ordering_fields = ("name", "price", "is_active", "is_featured")
+    ordering = ("name",)
+    search_fields = ("name", "description", "slug")
+
+    def get_queryset(self):
+        return Product.objects.select_related("category").all()
+
+
+class AdminProductDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ProductAdminSerializer
+    permission_classes = (IsAdminUser,)
+    queryset = Product.objects.select_related("category").all()
