@@ -14,8 +14,12 @@ urlpatterns = [
         FeaturedProductListView.as_view(),
         name="product-featured-list",
     ),
-    path("categories/", ActiveCategoryListView.as_view(), name="category-lis\
-         t"),
+    path(
+        "categories/",
+        ActiveCategoryListView.as_view(),
+        name="category-lis\
+         t",
+    ),
     path(
         "categories/<slug:slug>/products/",
         CategoryProductListView.as_view(),

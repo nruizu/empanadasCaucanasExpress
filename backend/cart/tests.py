@@ -16,7 +16,9 @@ class CartModelTest(TestCase):
         self.user = User.objects.create_user(
             username="testuser", email="test@example.com", password="testpass123"
         )
-        self.category = Category.objects.create(name="Test Category", slug="test-category")
+        self.category = Category.objects.create(
+            name="Test Category", slug="test-category"
+        )
 
     def test_cart_creation(self):
         # Prueba que se crea un carrito correctamente
@@ -53,7 +55,9 @@ class CartProductModelTest(TestCase):
         self.user = User.objects.create_user(
             username="testuser", email="test@example.com", password="testpass123"
         )
-        self.category = Category.objects.create(name="Test Category", slug="test-category")
+        self.category = Category.objects.create(
+            name="Test Category", slug="test-category"
+        )
         self.product = Product.objects.create(
             name="Test Product",
             slug="test-product",
@@ -74,9 +78,7 @@ class CartProductModelTest(TestCase):
 
     def test_cart_product_default_quantity(self):
         # Prueba que la cantidad por defecto es 1
-        cart_product = CartProduct.objects.create(
-            cart=self.cart, product=self.product
-        )
+        cart_product = CartProduct.objects.create(cart=self.cart, product=self.product)
         self.assertEqual(cart_product.quantity, 1)
 
     def test_cart_product_str_representation(self):
@@ -92,7 +94,6 @@ class CartProductModelTest(TestCase):
         cart_product = CartProduct.objects.create(
             cart=self.cart, product=self.product, quantity=2
         )
-        cart_id = self.cart.id
         self.cart.delete()
 
         self.assertFalse(CartProduct.objects.filter(id=cart_product.id).exists())
@@ -111,8 +112,10 @@ class CartViewSetTest(APITestCase):
         )
         self.token = Token.objects.create(user=self.user)
         self.other_token = Token.objects.create(user=self.other_user)
-        
-        self.category = Category.objects.create(name="Test Category", slug="test-category")
+
+        self.category = Category.objects.create(
+            name="Test Category", slug="test-category"
+        )
         self.product1 = Product.objects.create(
             name="Product 1",
             slug="product-1",
@@ -161,9 +164,7 @@ class CartViewSetTest(APITestCase):
     def test_my_cart_returns_existing_cart(self):
         # Prueba que my_cart retorna el carrito existente
         cart = Cart.objects.create(user=self.user)
-        CartProduct.objects.create(
-            cart=cart, product=self.product1, quantity=2
-        )
+        CartProduct.objects.create(cart=cart, product=self.product1, quantity=2)
 
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
         response = self.client.get("/api/cart/my_cart/")
@@ -229,13 +230,13 @@ class CartViewSetTest(APITestCase):
     def test_add_multiple_products(self):
         # Prueba agregar múltiples productos al carrito
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
-        
+
         # Agregar primer producto
         response1 = self.client.post(
             "/api/cart/add_product/", {"product_id": self.product1.id, "quantity": 2}
         )
         self.assertEqual(response1.status_code, status.HTTP_200_OK)
-        
+
         # Agregar segundo producto
         response2 = self.client.post(
             "/api/cart/add_product/", {"product_id": self.product2.id, "quantity": 1}
@@ -247,12 +248,12 @@ class CartViewSetTest(APITestCase):
     def test_add_same_product_increases_quantity(self):
         # Prueba agregar el mismo producto varias veces aumenta la cantidad
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
-        
+
         # Agregar producto primera vez
         self.client.post(
             "/api/cart/add_product/", {"product_id": self.product1.id, "quantity": 2}
         )
-        
+
         # Agregar el mismo producto
         response = self.client.post(
             "/api/cart/add_product/", {"product_id": self.product1.id, "quantity": 3}
@@ -263,20 +264,20 @@ class CartViewSetTest(APITestCase):
     def test_remove_product_from_cart(self):
         # Prueba eliminar un producto del carrito
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
-        
+
         # Crear carrito con producto
         cart = Cart.objects.create(user=self.user)
         cart_product = CartProduct.objects.create(
             cart=cart, product=self.product1, quantity=2
         )
-        
+
         # Eliminar producto
         response = self.client.delete(
             f"/api/cart/{cart.id}/remove_product/",
             {"cart_product_id": cart_product.id},
-            format="json"
+            format="json",
         )
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data["products"]), 0)
 
@@ -284,39 +285,37 @@ class CartViewSetTest(APITestCase):
         # Prueba eliminar producto sin cart_product_id
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
         cart = Cart.objects.create(user=self.user)
-        
+
         response = self.client.delete(
-            f"/api/cart/{cart.id}/remove_product/",
-            {},
-            format="json"
+            f"/api/cart/{cart.id}/remove_product/", {}, format="json"
         )
-        
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_remove_nonexistent_product(self):
         # Prueba eliminar un producto que no existe en el carrito
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
         cart = Cart.objects.create(user=self.user)
-        
+
         response = self.client.delete(
             f"/api/cart/{cart.id}/remove_product/",
             {"cart_product_id": 9999},
-            format="json"
+            format="json",
         )
-        
+
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_clear_cart(self):
         # Prueba limpiar el carrito
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
-        
+
         # Crear carrito con productos
         cart = Cart.objects.create(user=self.user)
         CartProduct.objects.create(cart=cart, product=self.product1, quantity=2)
         CartProduct.objects.create(cart=cart, product=self.product2, quantity=1)
-        
+
         response = self.client.delete(f"/api/cart/{cart.id}/clear_cart/")
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data["products"]), 0)
         self.assertEqual(response.data["total_items"], 0)
@@ -324,67 +323,76 @@ class CartViewSetTest(APITestCase):
     def test_update_quantity(self):
         # Prueba actualizar la cantidad de un producto
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
-        
+
         # Crear carrito con producto
         cart = Cart.objects.create(user=self.user)
         cart_product = CartProduct.objects.create(
             cart=cart, product=self.product1, quantity=2
         )
-        
+
         # Actualizar cantidad
         response = self.client.patch(
             "/api/cart/update_quantity/",
             {"cart_product_id": cart_product.id, "quantity": 5},
-            format="json"
+            format="json",
         )
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["products"][0]["quantity"], 5)
 
     def test_update_quantity_invalid(self):
         # Prueba actualizar cantidad con valor inválido
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
-        
+
         cart = Cart.objects.create(user=self.user)
         cart_product = CartProduct.objects.create(
             cart=cart, product=self.product1, quantity=2
         )
-        
+
         response = self.client.patch(
             "/api/cart/update_quantity/",
             {"cart_product_id": cart_product.id, "quantity": 0},
-            format="json"
+            format="json",
         )
-        
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_get_queryset_filters_by_user(self):
         # Prueba que el queryset de CartViewSet filtra por usuario autenticado
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
-        
+
         # Crear carrito para el usuario actual
         cart1 = Cart.objects.create(user=self.user)
+
         # Crear carrito para otro usuario
-        cart2 = Cart.objects.create(user=self.other_user)
-        
+        Cart.objects.create(user=self.other_user)
+
         response = self.client.get("/api/cart/")
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # La respuesta está paginada, acceder a los resultados
-        results = response.data["results"] if isinstance(response.data, dict) else response.data
+        results = (
+            response.data["results"]
+            if isinstance(response.data, dict)
+            else response.data
+        )
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["id"], cart1.id)
 
     def test_total_price_calculation(self):
         # Prueba el cálculo del precio total
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
-        
+
         cart = Cart.objects.create(user=self.user)
-        CartProduct.objects.create(cart=cart, product=self.product1, quantity=2)  # 20.00
-        CartProduct.objects.create(cart=cart, product=self.product2, quantity=3)  # 60.00
-        
+        CartProduct.objects.create(
+            cart=cart, product=self.product1, quantity=2
+        )  # 20.00
+        CartProduct.objects.create(
+            cart=cart, product=self.product2, quantity=3
+        )  # 60.00
+
         response = self.client.get("/api/cart/my_cart/")
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Total debería ser 20*2 + 20*3 = 40 + 60 = 100
         self.assertEqual(float(response.data["total_price"]), 80.00)

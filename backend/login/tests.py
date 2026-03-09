@@ -2,7 +2,6 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient, APITestCase
 from rest_framework.authtoken.models import Token
 from rest_framework import status
-from django.test import TestCase
 
 
 class LoginViewTest(APITestCase):
@@ -11,17 +10,12 @@ class LoginViewTest(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123"
+            username="testuser", email="test@example.com", password="testpass123"
         )
 
     def test_login_success(self):
         # Prueba login exitoso con credenciales correctas
-        data = {
-            "username": "testuser",
-            "password": "testpass123"
-        }
+        data = {"username": "testuser", "password": "testpass123"}
         response = self.client.post("/api/auth/login/", data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -35,25 +29,20 @@ class LoginViewTest(APITestCase):
 
     def test_login_creates_token(self):
         # Prueba que el login crea un token si no existe o retorna el token existente
-        data = {
-            "username": "testuser",
-            "password": "testpass123"
-        }
+        data = {"username": "testuser", "password": "testpass123"}
         response = self.client.post("/api/auth/login/", data)
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         token_key = response.data["token"]
-        
-        # Verificar que el token existe en la base de datos y está asociado al usuario correcto
+
+        # Verificar que el token existe en la base de datos
+        # y está asociado al usuario correcto
         token = Token.objects.get(key=token_key)
         self.assertEqual(token.user, self.user)
 
     def test_login_invalid_username(self):
         # Prueba login con username inválido
-        data = {
-            "username": "invaliduser",
-            "password": "testpass123"
-        }
+        data = {"username": "invaliduser", "password": "testpass123"}
         response = self.client.post("/api/auth/login/", data)
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -62,10 +51,7 @@ class LoginViewTest(APITestCase):
 
     def test_login_invalid_password(self):
         # Prueba login con contraseña inválida
-        data = {
-            "username": "testuser",
-            "password": "wrongpassword"
-        }
+        data = {"username": "testuser", "password": "wrongpassword"}
         response = self.client.post("/api/auth/login/", data)
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -74,9 +60,7 @@ class LoginViewTest(APITestCase):
 
     def test_login_missing_username(self):
         # Prueba login sin proporcionar username
-        data = {
-            "password": "testpass123"
-        }
+        data = {"password": "testpass123"}
         response = self.client.post("/api/auth/login/", data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -85,9 +69,7 @@ class LoginViewTest(APITestCase):
 
     def test_login_missing_password(self):
         # Prueba login sin proporcionar contraseña
-        data = {
-            "username": "testuser"
-        }
+        data = {"username": "testuser"}
         response = self.client.post("/api/auth/login/", data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -104,11 +86,8 @@ class LoginViewTest(APITestCase):
     def test_login_returns_existing_token(self):
         # Prueba que login retorna token existente si ya existe
         token1 = Token.objects.create(user=self.user)
-        
-        data = {
-            "username": "testuser",
-            "password": "testpass123"
-        }
+
+        data = {"username": "testuser", "password": "testpass123"}
         response = self.client.post("/api/auth/login/", data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -116,16 +95,11 @@ class LoginViewTest(APITestCase):
 
     def test_login_admin_user(self):
         # Prueba login con usuario administrador
-        admin_user = User.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
-            password="adminpass123"
+        User.objects.create_superuser(
+            username="admin", email="admin@example.com", password="adminpass123"
         )
-        
-        data = {
-            "username": "admin",
-            "password": "adminpass123"
-        }
+
+        data = {"username": "admin", "password": "adminpass123"}
         response = self.client.post("/api/auth/login/", data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -143,7 +117,7 @@ class RegisterViewTest(APITestCase):
         data = {
             "username": "newuser",
             "email": "newuser@example.com",
-            "password": "newpass123"
+            "password": "newpass123",
         }
         response = self.client.post("/api/auth/registro/", data)
 
@@ -159,7 +133,7 @@ class RegisterViewTest(APITestCase):
         data = {
             "username": "newuser",
             "email": "newuser@example.com",
-            "password": "newpass123"
+            "password": "newpass123",
         }
         response = self.client.post("/api/auth/registro/", data)
 
@@ -172,7 +146,7 @@ class RegisterViewTest(APITestCase):
         data = {
             "username": "newuser",
             "email": "newuser@example.com",
-            "password": "newpass123"
+            "password": "newpass123",
         }
         response = self.client.post("/api/auth/registro/", data)
 
@@ -184,15 +158,13 @@ class RegisterViewTest(APITestCase):
     def test_register_duplicate_username(self):
         # Prueba registro con username duplicado (debería fallar)
         User.objects.create_user(
-            username="existinguser",
-            email="existing@example.com",
-            password="pass123"
+            username="existinguser", email="existing@example.com", password="pass123"
         )
-        
+
         data = {
             "username": "existinguser",
             "email": "newemail@example.com",
-            "password": "newpass123"
+            "password": "newpass123",
         }
         response = self.client.post("/api/auth/registro/", data)
 
@@ -200,31 +172,21 @@ class RegisterViewTest(APITestCase):
 
     def test_register_missing_username(self):
         # Prueba registro sin username
-        data = {
-            "email": "test@example.com",
-            "password": "testpass123"
-        }
+        data = {"email": "test@example.com", "password": "testpass123"}
         response = self.client.post("/api/auth/registro/", data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_register_missing_password(self):
         # Prueba registro sin contraseña
-        data = {
-            "username": "newuser",
-            "email": "test@example.com"
-        }
+        data = {"username": "newuser", "email": "test@example.com"}
         response = self.client.post("/api/auth/registro/", data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_register_password_too_short(self):
         # Prueba registro con contraseña muy corta
-        data = {
-            "username": "newuser",
-            "email": "test@example.com",
-            "password": "short"
-        }
+        data = {"username": "newuser", "email": "test@example.com", "password": "short"}
         response = self.client.post("/api/auth/registro/", data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -232,10 +194,7 @@ class RegisterViewTest(APITestCase):
 
     def test_register_without_email(self):
         # Prueba registro sin email (campo opcional)
-        data = {
-            "username": "newuser",
-            "password": "newpass123"
-        }
+        data = {"username": "newuser", "password": "newpass123"}
         response = self.client.post("/api/auth/registro/", data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -244,11 +203,7 @@ class RegisterViewTest(APITestCase):
 
     def test_register_empty_string_email(self):
         # Prueba registro con email vacío
-        data = {
-            "username": "newuser",
-            "email": "",
-            "password": "newpass123"
-        }
+        data = {"username": "newuser", "email": "", "password": "newpass123"}
         response = self.client.post("/api/auth/registro/", data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -258,15 +213,13 @@ class RegisterViewTest(APITestCase):
     def test_register_duplicate_email(self):
         # Prueba registro con email duplicado (debería permitirse)
         User.objects.create_user(
-            username="user1",
-            email="duplicate@example.com",
-            password="pass123"
+            username="user1", email="duplicate@example.com", password="pass123"
         )
-        
+
         data = {
             "username": "user2",
             "email": "duplicate@example.com",
-            "password": "newpass123"
+            "password": "newpass123",
         }
         response = self.client.post("/api/auth/registro/", data)
 
@@ -279,9 +232,7 @@ class LogoutViewTest(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123"
+            username="testuser", email="test@example.com", password="testpass123"
         )
         self.token = Token.objects.create(user=self.user)
 
@@ -299,9 +250,7 @@ class LogoutViewTest(APITestCase):
         response = self.client.post("/api/auth/logout/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(
-            Token.objects.filter(user=self.user).exists()
-        )
+        self.assertFalse(Token.objects.filter(user=self.user).exists())
 
     def test_logout_without_authentication(self):
         # Prueba logout sin proporcionar token de autenticación
@@ -319,11 +268,11 @@ class LogoutViewTest(APITestCase):
     def test_cannot_use_token_after_logout(self):
         # Prueba que no se puede usar el token después de logout
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
-        
+
         # Logout
         response = self.client.post("/api/auth/logout/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
+
         # Intentar usar el mismo token
         response = self.client.post("/api/auth/logout/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -335,15 +284,11 @@ class MeViewTest(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123"
+            username="testuser", email="test@example.com", password="testpass123"
         )
         self.token = Token.objects.create(user=self.user)
         self.admin_user = User.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
-            password="adminpass123"
+            username="admin", email="admin@example.com", password="adminpass123"
         )
         self.admin_token = Token.objects.create(user=self.admin_user)
 
@@ -392,20 +337,18 @@ class MeViewTest(APITestCase):
     def test_me_multiple_users_see_own_data(self):
         # Prueba que cada usuario solo ve sus propios datos
         user2 = User.objects.create_user(
-            username="user2",
-            email="user2@example.com",
-            password="pass123"
+            username="user2", email="user2@example.com", password="pass123"
         )
         token2 = Token.objects.create(user=user2)
-        
+
         # Usuario 1 obtiene su información
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
         response1 = self.client.get("/api/auth/me/")
-        
+
         # Usuario 2 obtiene su información
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {token2.key}")
         response2 = self.client.get("/api/auth/me/")
-        
+
         self.assertEqual(response1.data["username"], "testuser")
         self.assertEqual(response2.data["username"], "user2")
         self.assertNotEqual(response1.data["username"], response2.data["username"])
