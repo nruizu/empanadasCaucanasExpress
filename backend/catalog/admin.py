@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Product
+from .models import Category, Product, Order, OrderItem
 
 
 @admin.register(Category)
@@ -18,3 +18,53 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ("is_featured", "is_active", "category")
     search_fields = ("name", "slug", "description")
     prepopulated_fields = {"slug": ("name",)}
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "customer_name",
+        "delivery_method",
+        "status",
+        "pickup_date",
+        "pickup_time",
+        "scheduled_date",
+        "total_amount",
+        "created_at",
+    )
+    list_filter = ("status", "delivery_method", "created_at")
+    search_fields = ("customer_name", "customer_phone", "customer_email")
+    readonly_fields = ("created_at", "updated_at")
+
+    fieldsets = (
+        (
+            "Información del Cliente",
+            {"fields": ("customer_name", "customer_phone", "customer_email")},
+        ),
+        ("Detalles del Pedido", {"fields": ("delivery_method", "status", "notes")}),
+        (
+            "HU 4: Recogida en Sede",
+            {"fields": ("pickup_date", "pickup_time"), "classes": ("collapse",)},
+        ),
+        (
+            "HU 5: Programación Futura",
+            {"fields": ("scheduled_date",), "classes": ("collapse",)},
+        ),
+        (
+            "Entrega a Domicilio",
+            {"fields": ("delivery_address",), "classes": ("collapse",)},
+        ),
+        ("Información Financiera", {"fields": ("total_amount",)}),
+        (
+            "Metadatos",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+
+
+@admin.register(OrderItem)
+class OrderItemAdmin(admin.ModelAdmin):
+    list_display = ("order", "product", "quantity", "unit_price", "subtotal")
+    list_filter = ("order__status",)
+    search_fields = ("order__customer_name", "product__name")
