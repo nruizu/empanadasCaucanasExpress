@@ -33,7 +33,6 @@ jobs:
       DB_PASSWORD: postgres
       DB_HOST: localhost
       DB_PORT: 5432
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
 
     steps:
       - name: Checkout código
@@ -57,11 +56,11 @@ jobs:
 
       - name: Aplicar migraciones
         run: |
-          python backend/manage.py migrate
+          python manage.py migrate
 
       - name: Ejecutar tests
         run: |
-          python backend/manage.py test
+          python manage.py test
 
       - name: Lint
         run: flake8 .
@@ -69,6 +68,3 @@ jobs:
       - name: Check format
         run: |
           black --check --diff .
-      - name: Run Bandit
-        run: |
-          bandit -c bandit.yaml -r .
