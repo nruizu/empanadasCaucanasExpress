@@ -2,14 +2,12 @@ FROM python:3.12-alpine
 
 WORKDIR /app
 
-ENV PYTHONPATH=/app
+COPY requirements.txt .
 
-COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY . .
 
-COPY backend/ /app/backend/
+EXPOSE 8000
 
-EXPOSE 8080
-
-CMD ["python", "backend/manage.py", "runserver", "0.0.0.0:8080"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

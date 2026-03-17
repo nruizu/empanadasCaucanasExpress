@@ -1,23 +1,6 @@
+version: "3.9"
+
 services:
-
-  front:
-
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-
-    volumes:
-      - ./frontend:/app/frontend
-      - /app/frontend/node_modules
-
-    ports:
-      - "3000:3000"
-
-    depends_on:
-      - backend
-
-    networks:
-      - backend_network
 
   backend:
 
@@ -26,8 +9,7 @@ services:
       dockerfile: backend/Dockerfile
 
     volumes:
-      - ./backend:/app/backend
-      - ./media:/app/media
+      - .:/app
 
     ports:
       - "8080:8080"
@@ -35,18 +17,14 @@ services:
     env_file:
       - .env
 
-    environment:
-      - PYTHONPATH=/app
-
     command: >
       sh -c "
       echo 'Esperando base de datos...' &&
-      python backend/wait_for_db.py &&
+      python wait_for_db.py &&
       echo 'Base de datos lista ✅' &&
-      python backend/manage.py migrate &&
+      python manage.py migrate &&
       echo 'Iniciando servidor Django...' &&
-      echo '🚀 Django corriendo en: http://localhost:8080' &&
-      python backend/manage.py runserver 0.0.0.0:8080
+      python manage.py runserver 0.0.0.0:8080
       "
 
     depends_on:
