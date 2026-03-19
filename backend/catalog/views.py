@@ -3,8 +3,13 @@ from rest_framework import filters, generics
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAdminUser
 
-from .models import Category, Product
-from .serializers import CategorySerializer, ProductAdminSerializer, ProductSerializer
+from .models import Category, Product, Order
+from .serializers import (
+    CategorySerializer,
+    ProductAdminSerializer,
+    ProductSerializer,
+    OrderSerializer,
+)
 
 
 class ProductPagination(PageNumberPagination):
@@ -88,3 +93,42 @@ class AdminProductDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProductAdminSerializer
     permission_classes = (IsAdminUser,)
     queryset = Product.objects.select_related("category").all()
+
+
+class OrderListCreateView(generics.ListCreateAPIView):
+    """
+    GET: Lista todos los pedidos
+    POST: Crea un nuevo pedido
+    """
+
+    serializer_class = OrderSerializer
+    pagination_class = ProductPagination
+    filter_backends = (filters.OrderingFilter, filters.SearchFilter)
+    ordering_fields = ("created_at", "status", "pickup_date", "scheduled_date")
+    ordering = ("-created_at",)
+    search_fields = ("customer_name", "customer_phone", "customer_email")
+
+    def get_queryset(self):
+        queryset = Order.objects.prefetch_related("items__product").all()
+
+        # Filtros opcionales
+        status = self.request.query_params.get("status")
+        if status:
+            queryset = queryset.filter(status=status)
+
+        delivery_method = self.request.query_params.get("delivery_method")
+        if delivery_method:
+            queryset = queryset.filter(delivery_method=delivery_method)
+
+        return queryset
+
+
+class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET: Ver detalle de un pedido
+    PUT/PATCH: Actualizar un pedido
+    DELETE: Eliminar un pedido
+    """
+
+    serializer_class = OrderSerializer
+    queryset = Order.objects.prefetch_related("items__product").all()
