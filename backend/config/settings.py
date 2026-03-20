@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework.authtoken",
-    "backend.catalog",
+    "catalog",
     "backend.cart",
     "backend.login",
 ]
@@ -97,6 +97,15 @@ DATABASES = {
         "PORT": env("DB_PORT"),
     }
 }
+
+# En modo test local, usar sqlite3 en memoria para evitar depender de Docker/postgres
+if os.getenv("DJANGO_ENV") == "test":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
+        }
+    }
 
 
 # Password validation

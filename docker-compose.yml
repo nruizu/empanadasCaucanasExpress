@@ -9,6 +9,7 @@ services:
     volumes:
       - ./frontend:/app/frontend
       - /app/frontend/node_modules
+      - /app/frontend/.next 
 
     ports:
       - "3000:3000"
