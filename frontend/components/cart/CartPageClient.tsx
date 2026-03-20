@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import * as cartApi from "@/lib/cart-api";
 import CartItem from "./CartItem";
@@ -10,6 +11,7 @@ export function emitCartUpdate() {
 }
 
 export default function CartPageClient() {
+  const router = useRouter();
   const { token } = useAuth();
   const [cart, setCart] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,7 @@ export default function CartPageClient() {
     }
   };
 
-  if (!isClient) return <div>Loading...</div>;
+  if (!isClient) return <div>Loading...</div> as any;
 
   if (!token) {
     return (
@@ -114,12 +116,22 @@ export default function CartPageClient() {
               />
             ))}
 
-            {/* Total */}
+            {/* Total y botón checkout */}
             {cart.total_price !== undefined && (
-              <div className="mt-6 flex justify-end border-t pt-4">
-                <span className="text-lg font-semibold">
-                  Total: ${Number(cart.total_price).toFixed(0)}
-                </span>
+              <div className="mt-6 border-t pt-4">
+                <div className="flex justify-end mb-4">
+                  <span className="text-lg font-semibold">
+                    Total: ${Number(cart.total_price).toFixed(0)}
+                  </span>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => void router.push("/checkout")}
+                    className="bg-[var(--cce-pink)] text-white px-6 py-3 rounded hover:opacity-90"
+                  >
+                    Proceder al checkout
+                  </button>
+                </div>
               </div>
             )}
           </>
