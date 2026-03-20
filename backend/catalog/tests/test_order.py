@@ -9,6 +9,7 @@ class HU4_PickupOrderTests(TestCase):
     """
     HU 4: Programar pedido para recoger en sede
     """
+
     def test_crear_pedido_pickup_valido(self):
         """Debe permitir crear pedido con fecha y hora válida"""
         order = Order(
@@ -61,6 +62,7 @@ class HU5_ScheduledOrderTests(TestCase):
     """
     HU 5: Programar pedido para fecha futura
     """
+
     def test_crear_pedido_fecha_futura(self):
         """Debe permitir fecha futura"""
         future_date = timezone.now().date() + timedelta(days=1)
