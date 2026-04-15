@@ -13,11 +13,16 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
 
   const tokenRef = useRef(token);
-  useEffect(() => { tokenRef.current = token; }, [token]);
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
 
   const loadCart = async () => {
     const t = tokenRef.current;
-    if (!t) { setCartCount(0); return; }
+    if (!t) {
+      setCartCount(0);
+      return;
+    }
     try {
       const cart = await cartApi.getMyCart();
       setCartCount(cart.total_items || 0);
@@ -55,11 +60,17 @@ export default function Navbar() {
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-30 bg-white shadow px-4 h-16 flex items-center justify-between">
-        <button onClick={() => setOpen(true)} className="text-2xl font-bold text-[var(--cce-green-dark)]">
+        <button
+          onClick={() => setOpen(true)}
+          className="text-2xl font-bold text-[var(--cce-green-dark)]"
+        >
           ☰
         </button>
 
-        <Link href="/" className="text-xl font-bold text-[var(--cce-green-dark)]">
+        <Link
+          href="/"
+          className="text-xl font-bold text-[var(--cce-green-dark)]"
+        >
           ECE
         </Link>
 
@@ -67,8 +78,19 @@ export default function Navbar() {
         {token ? (
           <Link href="/carrito" className="relative p-2">
             {/* Ícono SVG carrito */}
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-[var(--cce-green-dark)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.5 6h13M7 13L5.4 5M10 21a1 1 0 100-2 1 1 0 000 2zm7 0a1 1 0 100-2 1 1 0 000 2z" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-7 w-7 text-[var(--cce-green-dark)]"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.5 6h13M7 13L5.4 5M10 21a1 1 0 100-2 1 1 0 000 2zm7 0a1 1 0 100-2 1 1 0 000 2z"
+              />
             </svg>
             {/* Contador */}
             {cartCount > 0 && (
@@ -84,20 +106,43 @@ export default function Navbar() {
 
       <div className="h-16" />
 
-      {open && <div onClick={() => setOpen(false)} className="fixed inset-0 bg-black/40 z-40" />}
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 bg-black/40 z-40"
+        />
+      )}
 
-      <aside className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-50 transform transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside
+        className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-50 transform transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}
+      >
         <div className="p-6 flex flex-col gap-6">
-          <button onClick={() => setOpen(false)} className="self-end text-xl">✕</button>
+          <button onClick={() => setOpen(false)} className="self-end text-xl">
+            ✕
+          </button>
 
-          <Link href="/" onClick={() => setOpen(false)} className="text-lg font-semibold">Inicio</Link>
+          <Link
+            href="/"
+            onClick={() => setOpen(false)}
+            className="text-lg font-semibold"
+          >
+            Inicio
+          </Link>
 
           {token && user?.is_staff && (
             <>
-              <Link href="/admin/catalogo" onClick={() => setOpen(false)} className="text-lg font-semibold">
+              <Link
+                href="/admin/catalogo"
+                onClick={() => setOpen(false)}
+                className="text-lg font-semibold"
+              >
                 Gestión catálogo
               </Link>
-              <Link href="/admin/ventas" onClick={() => setOpen(false)} className="text-lg font-semibold">
+              <Link
+                href="/admin/ventas"
+                onClick={() => setOpen(false)}
+                className="text-lg font-semibold"
+              >
                 Historial de ventas
               </Link>
             </>
@@ -105,17 +150,36 @@ export default function Navbar() {
 
           {token ? (
             <>
-              <Link href="/cuenta" onClick={() => setOpen(false)} className="text-lg font-semibold">
+              <Link
+                href="/cuenta"
+                onClick={() => setOpen(false)}
+                className="text-lg font-semibold"
+              >
                 Cuenta
               </Link>
-              <button onClick={handleLogout} className="text-left text-lg font-semibold text-red-600">
+              <button
+                onClick={handleLogout}
+                className="text-left text-lg font-semibold text-red-600"
+              >
                 Cerrar sesión
               </button>
             </>
           ) : (
             <>
-              <Link href="/login" onClick={() => setOpen(false)} className="text-lg font-semibold">Iniciar sesión</Link>
-              <Link href="/registro" onClick={() => setOpen(false)} className="text-lg font-semibold">Registrarse</Link>
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="text-lg font-semibold"
+              >
+                Iniciar sesión
+              </Link>
+              <Link
+                href="/registro"
+                onClick={() => setOpen(false)}
+                className="text-lg font-semibold"
+              >
+                Registrarse
+              </Link>
             </>
           )}
         </div>

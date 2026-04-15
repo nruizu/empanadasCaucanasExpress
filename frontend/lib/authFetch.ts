@@ -1,4 +1,4 @@
-export async function authFetch(url: string, options: any = {}) {
+export async function authFetch(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem("cce_token");
 
   return fetch(`http://localhost:8080${url}`, {

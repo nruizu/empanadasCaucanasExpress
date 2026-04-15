@@ -286,7 +286,10 @@ class SalesHistoryApiTests(TestCase):
         )
         self.assertEqual(metrics_response.status_code, 200)
         self.assertEqual(metrics_response.data["total_orders"], 1)
-        self.assertEqual(Decimal(metrics_response.data["total_sold"]), Decimal("15000.00"))
+        self.assertEqual(
+            Decimal(metrics_response.data["total_sold"]),
+            Decimal("15000.00"),
+        )
 
     def test_manual_sale_registration_requires_admin(self):
         payload = {
@@ -389,11 +392,15 @@ class SalesHistoryApiTests(TestCase):
 
     def test_manual_sale_delete_requires_admin(self):
         self._clear_auth()
-        unauth_response = self.client.delete(f"/api/admin/sales/{self.order_pickup.id}/")
+        unauth_response = self.client.delete(
+            f"/api/admin/sales/{self.order_pickup.id}/"
+        )
         self.assertIn(unauth_response.status_code, (401, 403))
 
         self._auth_normal()
-        forbidden_response = self.client.delete(f"/api/admin/sales/{self.order_pickup.id}/")
+        forbidden_response = self.client.delete(
+            f"/api/admin/sales/{self.order_pickup.id}/"
+        )
         self.assertEqual(forbidden_response.status_code, 403)
 
     def test_order_post_scheduled_requires_date(self):

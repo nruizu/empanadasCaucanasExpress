@@ -6,9 +6,11 @@ interface CategoryCardProps {
   onSelect: (slug: string) => void;
 }
 
-export default function CategoryCard({ category, selected = false, onSelect }: CategoryCardProps) {
-
-
+export default function CategoryCard({
+  category,
+  selected = false,
+  onSelect,
+}: CategoryCardProps) {
   const CATEGORY_IMAGES: Record<string, string> = {
     entradas: "/entradas.jpeg",
     desayunos: "/desayuno.jpeg",
@@ -17,7 +19,6 @@ export default function CategoryCard({ category, selected = false, onSelect }: C
     "bebidas-frias": "bebidas_frias.jpg",
     "para-llevar": "/para-llevar.jpeg",
   };
-
 
   return (
     <button
@@ -34,7 +35,9 @@ export default function CategoryCard({ category, selected = false, onSelect }: C
         className="h-32 w-full object-cover"
       />
       <div className="p-3">
-        <p className="text-sm font-bold text-[var(--cce-green-dark)]">{category.name}</p>
+        <p className="text-sm font-bold text-[var(--cce-green-dark)]">
+          {category.name}
+        </p>
       </div>
     </button>
   );

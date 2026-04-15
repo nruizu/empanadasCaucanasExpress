@@ -144,7 +144,9 @@ class Order(models.Model):
                 raise ValidationError("La fecha programada debe ser una fecha futura")
 
         if self.delivery_method == "scheduled" and not self.scheduled_date:
-            raise ValidationError("Debe especificar fecha programada para pedidos futuros")
+            raise ValidationError(
+                "Debe especificar fecha programada para pedidos futuros"
+            )
 
         if self.delivery_method == "delivery" and not self.delivery_address:
             raise ValidationError("Debe especificar dirección para entrega a domicilio")

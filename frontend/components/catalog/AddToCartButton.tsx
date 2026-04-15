@@ -6,7 +6,11 @@ interface AddToCartButtonProps {
   onAdd?: (productId: number, productName: string) => void;
 }
 
-export default function AddToCartButton({ productId, productName, onAdd }: AddToCartButtonProps) {
+export default function AddToCartButton({
+  productId,
+  productName,
+  onAdd,
+}: AddToCartButtonProps) {
   const handleClick = () => {
     onAdd?.(productId, productName); // 👈 agregar productName
   };

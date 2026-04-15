@@ -1,6 +1,7 @@
 import type { PaginatedResponse, Product } from "@/types/catalog";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 export interface ProductAdminPayload {
   name: string;
@@ -13,7 +14,10 @@ export interface ProductAdminPayload {
 }
 
 class AdminApiError extends Error {
-  constructor(message: string, public status: number) {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
     super(message);
     this.name = "AdminApiError";
   }
@@ -26,7 +30,10 @@ const getToken = () => {
   return localStorage.getItem("cce_token");
 };
 
-const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
+const request = async <T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> => {
   const token = getToken();
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -68,7 +75,10 @@ export const createAdminProduct = (payload: ProductAdminPayload) =>
     body: JSON.stringify(payload),
   });
 
-export const updateAdminProduct = (productId: number, payload: ProductAdminPayload) =>
+export const updateAdminProduct = (
+  productId: number,
+  payload: ProductAdminPayload,
+) =>
   request<Product>(`/admin/products/${productId}/`, {
     method: "PATCH",
     body: JSON.stringify(payload),

@@ -11,7 +11,12 @@ import {
   registerManualSale,
 } from "@/lib/admin-sales-api";
 import type { Product } from "@/types/catalog";
-import type { ManualSalePayload, SalesHistoryFilters, SalesMetrics, SalesOrder } from "@/types/sales";
+import type {
+  ManualSalePayload,
+  SalesHistoryFilters,
+  SalesMetrics,
+  SalesOrder,
+} from "@/types/sales";
 
 interface ItemFormRow {
   product_id: string;
@@ -67,21 +72,26 @@ export default function AdminSalesPage() {
   const [deletingSaleId, setDeletingSaleId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [orderPendingDelete, setOrderPendingDelete] = useState<SalesOrder | null>(null);
+  const [orderPendingDelete, setOrderPendingDelete] =
+    useState<SalesOrder | null>(null);
   const [orderDetail, setOrderDetail] = useState<SalesOrder | null>(null);
 
-  const canAccess = useMemo(() => Boolean(token && user?.is_staff), [token, user]);
+  const canAccess = useMemo(
+    () => Boolean(token && user?.is_staff),
+    [token, user],
+  );
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const [productsResponse, historyResponse, metricsResponse] = await Promise.all([
-        getAdminProducts(),
-        getSalesHistory(filters),
-        getSalesMetrics(filters),
-      ]);
+      const [productsResponse, historyResponse, metricsResponse] =
+        await Promise.all([
+          getAdminProducts(),
+          getSalesHistory(filters),
+          getSalesMetrics(filters),
+        ]);
       setProducts(productsResponse.results);
       setHistory(historyResponse.results);
       setMetrics(metricsResponse);
@@ -113,7 +123,11 @@ export default function AdminSalesPage() {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const updateItem = (index: number, field: keyof ItemFormRow, value: string) => {
+  const updateItem = (
+    index: number,
+    field: keyof ItemFormRow,
+    value: string,
+  ) => {
     setForm((current) => ({
       ...current,
       items: current.items.map((item, itemIndex) =>
@@ -237,9 +251,12 @@ export default function AdminSalesPage() {
     <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-8 md:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <section className="rounded-xl bg-white p-6 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-          <h1 className="text-2xl font-bold text-[var(--cce-green-dark)]">Registro manual e historial de ventas</h1>
+          <h1 className="text-2xl font-bold text-[var(--cce-green-dark)]">
+            Registro manual e historial de ventas
+          </h1>
           <p className="mt-1 text-sm text-[var(--cce-text-muted)]">
-            Registra ventas administrativas y consulta su impacto en el historial.
+            Registra ventas administrativas y consulta su impacto en el
+            historial.
           </p>
 
           {error && (
@@ -256,29 +273,40 @@ export default function AdminSalesPage() {
         </section>
 
         <section className="rounded-xl bg-white p-6 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-          <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">Registrar venta manual</h2>
+          <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">
+            Registrar venta manual
+          </h2>
           <p className="mt-2 text-sm text-[var(--cce-text-muted)]">
             Este formulario registra ventas en tienda física.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <form
+            onSubmit={handleSubmit}
+            className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2"
+          >
             <input
               value={form.customer_name}
-              onChange={(event) => updateForm("customer_name", event.target.value)}
+              onChange={(event) =>
+                updateForm("customer_name", event.target.value)
+              }
               placeholder="Nombre cliente"
               className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
             />
 
             <input
               value={form.customer_phone}
-              onChange={(event) => updateForm("customer_phone", event.target.value)}
+              onChange={(event) =>
+                updateForm("customer_phone", event.target.value)
+              }
               placeholder="Teléfono"
               className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
             />
 
             <input
               value={form.customer_email}
-              onChange={(event) => updateForm("customer_email", event.target.value)}
+              onChange={(event) =>
+                updateForm("customer_email", event.target.value)
+              }
               placeholder="Email (opcional)"
               className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
             />
@@ -303,12 +331,19 @@ export default function AdminSalesPage() {
             />
 
             <div className="md:col-span-2 space-y-2">
-              <p className="text-sm font-semibold text-[var(--cce-green-dark)]">Productos</p>
+              <p className="text-sm font-semibold text-[var(--cce-green-dark)]">
+                Productos
+              </p>
               {form.items.map((item, index) => (
-                <div key={`${index}-${item.product_id}`} className="grid grid-cols-1 gap-2 md:grid-cols-[2fr_1fr_auto]">
+                <div
+                  key={`${index}-${item.product_id}`}
+                  className="grid grid-cols-1 gap-2 md:grid-cols-[2fr_1fr_auto]"
+                >
                   <select
                     value={item.product_id}
-                    onChange={(event) => updateItem(index, "product_id", event.target.value)}
+                    onChange={(event) =>
+                      updateItem(index, "product_id", event.target.value)
+                    }
                     className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
                   >
                     <option value="">Selecciona producto</option>
@@ -323,7 +358,9 @@ export default function AdminSalesPage() {
                     type="number"
                     min="1"
                     value={item.quantity}
-                    onChange={(event) => updateItem(index, "quantity", event.target.value)}
+                    onChange={(event) =>
+                      updateItem(index, "quantity", event.target.value)
+                    }
                     className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
                   />
 
@@ -359,13 +396,17 @@ export default function AdminSalesPage() {
         </section>
 
         <section className="rounded-xl bg-white p-6 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-          <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">Consulta por período</h2>
+          <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">
+            Consulta por período
+          </h2>
 
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
             <input
               type="date"
               value={filters.start_date ?? ""}
-              onChange={(event) => applyFilter("start_date", event.target.value)}
+              onChange={(event) =>
+                applyFilter("start_date", event.target.value)
+              }
               className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
             />
             <input
@@ -376,7 +417,9 @@ export default function AdminSalesPage() {
             />
             <select
               value={filters.time_basis ?? "created"}
-              onChange={(event) => applyFilter("time_basis", event.target.value)}
+              onChange={(event) =>
+                applyFilter("time_basis", event.target.value)
+              }
               className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
             >
               <option value="created">Fecha de registro</option>
@@ -384,7 +427,9 @@ export default function AdminSalesPage() {
             </select>
             <select
               value={filters.order_source ?? ""}
-              onChange={(event) => applyFilter("order_source", event.target.value)}
+              onChange={(event) =>
+                applyFilter("order_source", event.target.value)
+              }
               className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
             >
               <option value="">Todas las fuentes</option>
@@ -415,26 +460,44 @@ export default function AdminSalesPage() {
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <article className="rounded-xl bg-white p-5 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-            <p className="text-sm text-[var(--cce-text-muted)]">Total vendido</p>
-            <p className="mt-2 text-2xl font-bold text-[var(--cce-green-dark)]">${metrics?.total_sold ?? "0.00"}</p>
+            <p className="text-sm text-[var(--cce-text-muted)]">
+              Total vendido
+            </p>
+            <p className="mt-2 text-2xl font-bold text-[var(--cce-green-dark)]">
+              ${metrics?.total_sold ?? "0.00"}
+            </p>
           </article>
           <article className="rounded-xl bg-white p-5 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-            <p className="text-sm text-[var(--cce-text-muted)]">Número de pedidos</p>
-            <p className="mt-2 text-2xl font-bold text-[var(--cce-green-dark)]">{metrics?.total_orders ?? 0}</p>
+            <p className="text-sm text-[var(--cce-text-muted)]">
+              Número de pedidos
+            </p>
+            <p className="mt-2 text-2xl font-bold text-[var(--cce-green-dark)]">
+              {metrics?.total_orders ?? 0}
+            </p>
           </article>
           <article className="rounded-xl bg-white p-5 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-            <p className="text-sm text-[var(--cce-text-muted)]">Ticket promedio</p>
-            <p className="mt-2 text-2xl font-bold text-[var(--cce-green-dark)]">${metrics?.average_ticket ?? "0.00"}</p>
+            <p className="text-sm text-[var(--cce-text-muted)]">
+              Ticket promedio
+            </p>
+            <p className="mt-2 text-2xl font-bold text-[var(--cce-green-dark)]">
+              ${metrics?.average_ticket ?? "0.00"}
+            </p>
           </article>
         </section>
 
         <section className="rounded-xl bg-white p-6 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-          <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">Historial de ventas</h2>
+          <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">
+            Historial de ventas
+          </h2>
 
           {loading ? (
-            <p className="mt-4 text-sm text-[var(--cce-text-muted)]">Cargando historial...</p>
+            <p className="mt-4 text-sm text-[var(--cce-text-muted)]">
+              Cargando historial...
+            </p>
           ) : history.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--cce-text-muted)]">No hay ventas para mostrar.</p>
+            <p className="mt-4 text-sm text-[var(--cce-text-muted)]">
+              No hay ventas para mostrar.
+            </p>
           ) : (
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full text-left text-sm">
@@ -453,15 +516,24 @@ export default function AdminSalesPage() {
                 </thead>
                 <tbody>
                   {history.map((order) => (
-                    <tr key={order.id} className="border-b border-[color-mix(in_srgb,var(--cce-green-dark)_10%,white)]">
+                    <tr
+                      key={order.id}
+                      className="border-b border-[color-mix(in_srgb,var(--cce-green-dark)_10%,white)]"
+                    >
                       <td className="px-3 py-2">#{order.id}</td>
                       <td className="px-3 py-2">{order.customer_name}</td>
-                      <td className="px-3 py-2">{formatDeliveryLabel(order)}</td>
+                      <td className="px-3 py-2">
+                        {formatDeliveryLabel(order)}
+                      </td>
                       <td className="px-3 py-2">{order.order_source}</td>
-                      <td className="px-3 py-2">{order.created_by_username ?? "-"}</td>
+                      <td className="px-3 py-2">
+                        {order.created_by_username ?? "-"}
+                      </td>
                       <td className="px-3 py-2">{order.status}</td>
                       <td className="px-3 py-2">${order.total_amount}</td>
-                      <td className="px-3 py-2">{new Date(order.created_at).toLocaleString()}</td>
+                      <td className="px-3 py-2">
+                        {new Date(order.created_at).toLocaleString()}
+                      </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1">
                           <button
@@ -505,7 +577,11 @@ export default function AdminSalesPage() {
                                 strokeWidth="2"
                                 className="h-4 w-4"
                               >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18" />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M3 6h18"
+                                />
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
@@ -514,7 +590,9 @@ export default function AdminSalesPage() {
                               </svg>
                             </button>
                           ) : (
-                            <span className="text-xs text-[var(--cce-text-muted)]">-</span>
+                            <span className="text-xs text-[var(--cce-text-muted)]">
+                              -
+                            </span>
                           )}
                         </div>
                       </td>
@@ -530,10 +608,15 @@ export default function AdminSalesPage() {
       {orderPendingDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-[var(--cce-green-dark)]">Confirmar eliminación</h3>
-            <p className="mt-2 text-sm text-[var(--cce-text-muted)]">estas seguro de querer eliminar</p>
+            <h3 className="text-lg font-bold text-[var(--cce-green-dark)]">
+              Confirmar eliminación
+            </h3>
+            <p className="mt-2 text-sm text-[var(--cce-text-muted)]">
+              estas seguro de querer eliminar
+            </p>
             <p className="mt-1 text-sm text-[var(--cce-text-muted)]">
-              Pedido #{orderPendingDelete.id} - {orderPendingDelete.customer_name}
+              Pedido #{orderPendingDelete.id} -{" "}
+              {orderPendingDelete.customer_name}
             </p>
 
             <div className="mt-5 flex justify-end gap-2">
@@ -546,11 +629,15 @@ export default function AdminSalesPage() {
               </button>
               <button
                 type="button"
-                onClick={() => void handleDeleteManualSale(orderPendingDelete.id)}
+                onClick={() =>
+                  void handleDeleteManualSale(orderPendingDelete.id)
+                }
                 disabled={deletingSaleId === orderPendingDelete.id}
                 className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {deletingSaleId === orderPendingDelete.id ? "Eliminando..." : "Eliminar"}
+                {deletingSaleId === orderPendingDelete.id
+                  ? "Eliminando..."
+                  : "Eliminar"}
               </button>
             </div>
           </div>
@@ -562,7 +649,9 @@ export default function AdminSalesPage() {
           <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-[var(--cce-green-dark)]">Detalle del pedido #{orderDetail.id}</h3>
+                <h3 className="text-lg font-bold text-[var(--cce-green-dark)]">
+                  Detalle del pedido #{orderDetail.id}
+                </h3>
                 <p className="mt-1 text-sm text-[var(--cce-text-muted)]">
                   {new Date(orderDetail.created_at).toLocaleString()}
                 </p>
@@ -581,50 +670,83 @@ export default function AdminSalesPage() {
                   strokeWidth="2"
                   className="h-4 w-4"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 6L6 18M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M18 6L6 18M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-3 rounded-lg bg-[color-mix(in_srgb,var(--cce-green-dark)_6%,white)] p-4 text-sm md:grid-cols-2">
               <p>
-                <span className="font-semibold text-[var(--cce-green-dark)]">Cliente:</span> {orderDetail.customer_name}
+                <span className="font-semibold text-[var(--cce-green-dark)]">
+                  Cliente:
+                </span>{" "}
+                {orderDetail.customer_name}
               </p>
               <p>
-                <span className="font-semibold text-[var(--cce-green-dark)]">Teléfono:</span> {orderDetail.customer_phone}
+                <span className="font-semibold text-[var(--cce-green-dark)]">
+                  Teléfono:
+                </span>{" "}
+                {orderDetail.customer_phone}
               </p>
               <p>
-                <span className="font-semibold text-[var(--cce-green-dark)]">Email:</span> {orderDetail.customer_email || "-"}
+                <span className="font-semibold text-[var(--cce-green-dark)]">
+                  Email:
+                </span>{" "}
+                {orderDetail.customer_email || "-"}
               </p>
               <p>
-                <span className="font-semibold text-[var(--cce-green-dark)]">Fuente:</span> {orderDetail.order_source}
+                <span className="font-semibold text-[var(--cce-green-dark)]">
+                  Fuente:
+                </span>{" "}
+                {orderDetail.order_source}
               </p>
               <p>
-                <span className="font-semibold text-[var(--cce-green-dark)]">Modalidad:</span> {formatDeliveryLabel(orderDetail)}
+                <span className="font-semibold text-[var(--cce-green-dark)]">
+                  Modalidad:
+                </span>{" "}
+                {formatDeliveryLabel(orderDetail)}
               </p>
               <p>
-                <span className="font-semibold text-[var(--cce-green-dark)]">Estado:</span> {orderDetail.status}
+                <span className="font-semibold text-[var(--cce-green-dark)]">
+                  Estado:
+                </span>{" "}
+                {orderDetail.status}
               </p>
               <p>
-                <span className="font-semibold text-[var(--cce-green-dark)]">Total:</span> ${orderDetail.total_amount}
+                <span className="font-semibold text-[var(--cce-green-dark)]">
+                  Total:
+                </span>{" "}
+                ${orderDetail.total_amount}
               </p>
               <p>
-                <span className="font-semibold text-[var(--cce-green-dark)]">Registró:</span>{" "}
+                <span className="font-semibold text-[var(--cce-green-dark)]">
+                  Registró:
+                </span>{" "}
                 {orderDetail.created_by_username || "-"}
               </p>
             </div>
 
             <div className="mt-4">
-              <h4 className="text-sm font-semibold text-[var(--cce-green-dark)]">Notas del pedido</h4>
+              <h4 className="text-sm font-semibold text-[var(--cce-green-dark)]">
+                Notas del pedido
+              </h4>
               <p className="mt-1 rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_15%,white)] p-3 text-sm text-[var(--cce-text-muted)]">
                 {orderDetail.notes || "Sin notas"}
               </p>
             </div>
 
             <div className="mt-4">
-              <h4 className="text-sm font-semibold text-[var(--cce-green-dark)]">Productos</h4>
+              <h4 className="text-sm font-semibold text-[var(--cce-green-dark)]">
+                Productos
+              </h4>
               {orderDetail.items.length === 0 ? (
-                <p className="mt-2 text-sm text-[var(--cce-text-muted)]">Este pedido no tiene productos asociados.</p>
+                <p className="mt-2 text-sm text-[var(--cce-text-muted)]">
+                  Este pedido no tiene productos asociados.
+                </p>
               ) : (
                 <div className="mt-2 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
@@ -638,7 +760,10 @@ export default function AdminSalesPage() {
                     </thead>
                     <tbody>
                       {orderDetail.items.map((item) => (
-                        <tr key={item.id} className="border-b border-[color-mix(in_srgb,var(--cce-green-dark)_10%,white)]">
+                        <tr
+                          key={item.id}
+                          className="border-b border-[color-mix(in_srgb,var(--cce-green-dark)_10%,white)]"
+                        >
                           <td className="px-2 py-2">{item.product.name}</td>
                           <td className="px-2 py-2">{item.quantity}</td>
                           <td className="px-2 py-2">${item.unit_price}</td>

@@ -6,10 +6,14 @@ import type {
   SalesOrder,
 } from "@/types/sales";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 class AdminSalesApiError extends Error {
-  constructor(message: string, public status: number) {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
     super(message);
     this.name = "AdminSalesApiError";
   }
@@ -38,7 +42,10 @@ const buildQuery = (filters?: SalesHistoryFilters) => {
   return qs ? `?${qs}` : "";
 };
 
-const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
+const request = async <T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> => {
   const token = getToken();
 
   const response = await fetch(`${API_BASE_URL}${path}`, {

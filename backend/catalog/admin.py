@@ -46,7 +46,15 @@ class OrderAdmin(admin.ModelAdmin):
         ),
         (
             "Detalles del Pedido",
-            {"fields": ("order_source", "created_by", "delivery_method", "status", "notes")},
+            {
+                "fields": (
+                    "order_source",
+                    "created_by",
+                    "delivery_method",
+                    "status",
+                    "notes",
+                )
+            },
         ),
         (
             "HU 4: Recogida en Sede",

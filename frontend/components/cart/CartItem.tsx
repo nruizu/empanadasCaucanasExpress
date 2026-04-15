@@ -1,12 +1,24 @@
 interface CartItemProps {
   id: number | string;
-  product: any;
+  product: {
+    id: number;
+    name: string;
+    price: number | string;
+  };
   quantity: number;
   onRemove: (cartProductId: number | string) => void;
   onUpdateQuantity: (cartProductId: number | string, quantity: number) => void;
 }
 
-export default function CartItem({ id, product, quantity, onRemove, onUpdateQuantity }: CartItemProps) {
+export default function CartItem({
+  id,
+  product,
+  quantity,
+  onRemove,
+  onUpdateQuantity,
+}: CartItemProps) {
+  const unitPrice = Number(product?.price ?? 0);
+
   return (
     <div className="flex items-center justify-between border-b py-3 gap-4">
       <div className="flex-1">
@@ -34,7 +46,7 @@ export default function CartItem({ id, product, quantity, onRemove, onUpdateQuan
 
       {/* Subtotal */}
       <p className="w-20 text-right text-sm font-medium">
-        ${(product?.price * quantity).toFixed(0)}
+        ${(unitPrice * quantity).toFixed(0)}
       </p>
 
       {/* Eliminar */}

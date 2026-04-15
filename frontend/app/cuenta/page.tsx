@@ -5,6 +5,32 @@ import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import * as authApi from "@/lib/auth-api";
 
+type AccountErrorPayload = {
+  email?: string[];
+  full_name?: string[];
+  phone?: string[];
+  address?: string[];
+  message?: string;
+};
+
+const getAccountErrorMessage = (err: unknown) => {
+  if (err && typeof err === "object") {
+    const typed = err as AccountErrorPayload;
+    return (
+      typed.email?.[0] ||
+      typed.full_name?.[0] ||
+      typed.phone?.[0] ||
+      typed.address?.[0] ||
+      typed.message ||
+      "No se pudo actualizar la cuenta"
+    );
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return "No se pudo actualizar la cuenta";
+};
+
 interface AccountFormData {
   email: string;
   full_name: string;
@@ -79,15 +105,8 @@ export default function CuentaPage() {
       await authApi.updateMe(token, formData);
       setSuccess("Datos actualizados correctamente");
       window.dispatchEvent(new CustomEvent("auth:changed"));
-    } catch (err: any) {
-      const msg =
-        err?.email?.[0] ||
-        err?.full_name?.[0] ||
-        err?.phone?.[0] ||
-        err?.address?.[0] ||
-        err?.message ||
-        "No se pudo actualizar la cuenta";
-      setError(msg);
+    } catch (err: unknown) {
+      setError(getAccountErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -96,7 +115,9 @@ export default function CuentaPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
-        <div className="mx-auto max-w-2xl bg-white p-6 rounded">Cargando cuenta...</div>
+        <div className="mx-auto max-w-2xl bg-white p-6 rounded">
+          Cargando cuenta...
+        </div>
       </main>
     );
   }
@@ -106,8 +127,16 @@ export default function CuentaPage() {
       <div className="mx-auto max-w-2xl bg-white p-6 rounded">
         <h1 className="text-2xl font-bold mb-6">Mi Cuenta</h1>
 
-        {error && <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">{error}</div>}
-        {success && <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">{success}</div>}
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">
+            {success}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -123,7 +152,9 @@ export default function CuentaPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Nombre completo *</label>
+            <label className="block text-sm font-medium mb-1">
+              Nombre completo *
+            </label>
             <input
               type="text"
               name="full_name"
@@ -147,7 +178,9 @@ export default function CuentaPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Dirección *</label>
+            <label className="block text-sm font-medium mb-1">
+              Dirección *
+            </label>
             <textarea
               name="address"
               value={formData.address}
