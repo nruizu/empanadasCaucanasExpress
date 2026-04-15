@@ -8,7 +8,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import transaction
 from django.utils import timezone
-from rest_framework.permissions import AllowAny, IsAdminUser
 
 from backend.cart.models import Cart
 
