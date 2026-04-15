@@ -10,7 +10,14 @@ interface AuthContextType {
   user: { id: number; username: string; is_staff: boolean } | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  register: (username: string, password: string, email?: string) => Promise<unknown>;
+  register: (
+    username: string,
+    password: string,
+    email: string,
+    full_name: string,
+    phone: string,
+    address: string,
+  ) => Promise<unknown>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -79,8 +86,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new CustomEvent("auth:changed"));
   }, [token]);
 
-  const register = useCallback(async (username: string, password: string, email?: string) => {
-    const data = await authApi.register({ username, password, email }); // si falla, throw llega al catch de RegisterPage
+  const register = useCallback(
+    async (
+      username: string,
+      password: string,
+      email: string,
+      full_name: string,
+      phone: string,
+      address: string,
+    ) => {
+      const data = await authApi.register({
+        username,
+        password,
+        email,
+        full_name,
+        phone,
+        address,
+      }); // si falla, throw llega al catch de RegisterPage
     saveToken(data.token);
     setUser({
       id: data.user_id,
@@ -89,7 +111,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     window.dispatchEvent(new CustomEvent("auth:changed"));
     return data;
-  }, []);
+    },
+    [],
+  );
 
   return (
     <AuthContext.Provider value={{ token, user, login, logout, register }}>
