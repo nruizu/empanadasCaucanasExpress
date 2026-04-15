@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "catalog",
     "backend.cart",
     "backend.login",
+    "backend.report",
 ]
 
 MIDDLEWARE = [

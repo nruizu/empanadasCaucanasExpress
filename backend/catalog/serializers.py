@@ -82,6 +82,7 @@ class OrderSerializer(serializers.ModelSerializer):
     """
 
     items = OrderItemSerializer(many=True, read_only=True)
+    total_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -104,10 +105,35 @@ class OrderSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "created_at", "updated_at", "total_amount")
 
+    def get_total_amount(self, obj):
+        if obj.total_amount:
+            return obj.total_amount
+
+        return sum(
+            item.unit_price * item.quantity
+            for item in obj.items.select_related("product").all()
+        )
+
     def validate(self, data):
         """
-        Validaciones personalizadas - llama al método clean del modelo
+        Validaciones personalizadas - llama al método clean del modelo.
+        En updates parciales, combina los campos entrantes con los valores actuales
+        para no invalidar cambios como actualizar solo el estado.
         """
-        instance = Order(**data)
+        if self.instance is not None:
+            merged_data = {
+                "delivery_method": data.get(
+                    "delivery_method", self.instance.delivery_method
+                ),
+                "pickup_date": data.get("pickup_date", self.instance.pickup_date),
+                "pickup_time": data.get("pickup_time", self.instance.pickup_time),
+                "scheduled_date": data.get(
+                    "scheduled_date", self.instance.scheduled_date
+                ),
+            }
+            instance = Order(**merged_data)
+        else:
+            instance = Order(**data)
+
         instance.clean()  # Esto ejecuta las validaciones de HU 4 y 5
         return data
