@@ -20,12 +20,19 @@ interface CheckoutFormData {
   notes: string;
 }
 
+const getCheckoutErrorMessage = (err: unknown) => {
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return "Error al crear el pedido";
+};
+
 export default function CheckoutForm() {
   const router = useRouter();
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState<CheckoutFormData>({
     customer_name: "",
     customer_phone: "",
@@ -67,7 +74,9 @@ export default function CheckoutForm() {
   }, [token]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -107,7 +116,9 @@ export default function CheckoutForm() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.non_field_errors?.[0] || "Error al crear el pedido");
+        throw new Error(
+          errorData.non_field_errors?.[0] || "Error al crear el pedido",
+        );
       }
 
       if (token) {
@@ -124,8 +135,8 @@ export default function CheckoutForm() {
 
       alert("¡Pedido creado exitosamente!");
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Error al crear el pedido");
+    } catch (err: unknown) {
+      setError(getCheckoutErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -148,7 +159,13 @@ export default function CheckoutForm() {
               Nombre completo *
             </label>
             <div className="mb-1 text-xs text-gray-500">
-              ¿Necesitas actualizar tus datos? <Link href="/cuenta" className="text-[var(--cce-green-dark)] underline">Ir a cuenta</Link>
+              ¿Necesitas actualizar tus datos?{" "}
+              <Link
+                href="/cuenta"
+                className="text-[var(--cce-green-dark)] underline"
+              >
+                Ir a cuenta
+              </Link>
             </div>
             <input
               type="text"
@@ -161,9 +178,7 @@ export default function CheckoutForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Teléfono *
-            </label>
+            <label className="block text-sm font-medium mb-1">Teléfono *</label>
             <input
               type="tel"
               name="customer_phone"
@@ -175,9 +190,7 @@ export default function CheckoutForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Email
-            </label>
+            <label className="block text-sm font-medium mb-1">Email</label>
             <input
               type="email"
               name="customer_email"
@@ -239,7 +252,9 @@ export default function CheckoutForm() {
 
           {formData.delivery_method === "scheduled" && (
             <div className="p-4 bg-green-50 rounded">
-              <h3 className="font-semibold mb-2">Programar para fecha futura</h3>
+              <h3 className="font-semibold mb-2">
+                Programar para fecha futura
+              </h3>
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Fecha programada *

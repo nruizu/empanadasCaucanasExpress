@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import * as authApi from "@/lib/auth-api";
 
 const TOKEN_KEY = "cce_token";
@@ -23,23 +29,30 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<{ id: number; username: string; is_staff: boolean } | null>(null);
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    return localStorage.getItem(TOKEN_KEY);
+  });
+  const [user, setUser] = useState<{
+    id: number;
+    username: string;
+    is_staff: boolean;
+  } | null>(null);
 
-  const saveToken = (t: string | null) => {
+  const saveToken = useCallback((t: string | null) => {
     setToken(t);
-    if (t) localStorage.setItem(TOKEN_KEY, t);
-    else localStorage.removeItem(TOKEN_KEY);
-  };
-
-  useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (stored) setToken(stored);
+    if (t) {
+      localStorage.setItem(TOKEN_KEY, t);
+      return;
+    }
+    localStorage.removeItem(TOKEN_KEY);
+    setUser(null);
   }, []);
 
   useEffect(() => {
     if (!token) {
-      setUser(null);
       return;
     }
 
@@ -66,25 +79,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, saveToken]);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const data = await authApi.login({ username, password });
-    saveToken(data.token);
-    setUser({
-      id: data.user_id,
-      username: data.username,
-      is_staff: Boolean(data.is_staff),
-    });
-    window.dispatchEvent(new CustomEvent("auth:changed"));
-  }, []);
+  const login = useCallback(
+    async (username: string, password: string) => {
+      const data = await authApi.login({ username, password });
+      saveToken(data.token);
+      setUser({
+        id: data.user_id,
+        username: data.username,
+        is_staff: Boolean(data.is_staff),
+      });
+      window.dispatchEvent(new CustomEvent("auth:changed"));
+    },
+    [saveToken],
+  );
 
   const logout = useCallback(async () => {
     if (token) await authApi.logout(token).catch(() => null);
     saveToken(null);
     setUser(null);
     window.dispatchEvent(new CustomEvent("auth:changed"));
-  }, [token]);
+  }, [token, saveToken]);
 
   const register = useCallback(
     async (
@@ -103,16 +119,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         phone,
         address,
       }); // si falla, throw llega al catch de RegisterPage
-    saveToken(data.token);
-    setUser({
-      id: data.user_id,
-      username: data.username,
-      is_staff: Boolean(data.is_staff),
-    });
-    window.dispatchEvent(new CustomEvent("auth:changed"));
-    return data;
+      saveToken(data.token);
+      setUser({
+        id: data.user_id,
+        username: data.username,
+        is_staff: Boolean(data.is_staff),
+      });
+      window.dispatchEvent(new CustomEvent("auth:changed"));
+      return data;
     },
-    [],
+    [saveToken],
   );
 
   return (

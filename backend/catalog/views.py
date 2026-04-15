@@ -1,19 +1,25 @@
 from django.shortcuts import get_object_or_404
-from django.db import transaction
-from django.utils import timezone
+from django.db.models import Avg, Case, Count, DateField, DecimalField, Sum, Value, When
+from django.db.models.functions import Coalesce, TruncDate
 from rest_framework import filters, generics
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.db import transaction
+from django.utils import timezone
 
 from backend.cart.models import Cart
 
 from .models import Category, Product, Order
 from .models import OrderItem
 from .serializers import (
+    AdminManualSaleCreateSerializer,
     CategorySerializer,
     ProductAdminSerializer,
     ProductSerializer,
     OrderSerializer,
+    SalesHistoryQuerySerializer,
 )
 
 
@@ -199,3 +205,132 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = OrderSerializer
     permission_classes = (IsAdminUser,)
     queryset = Order.objects.prefetch_related("items__product").all()
+
+
+def _annotate_service_date(queryset):
+    return queryset.annotate(
+        service_date=Case(
+            When(delivery_method="pickup", then="pickup_date"),
+            When(delivery_method="scheduled", then="scheduled_date"),
+            default=TruncDate("created_at"),
+            output_field=DateField(),
+        )
+    )
+
+
+def _apply_sales_filters(queryset, params):
+    status = params.get("status")
+    if status:
+        queryset = queryset.filter(status=status)
+
+    order_source = params.get("order_source")
+    if order_source:
+        queryset = queryset.filter(order_source=order_source)
+
+    delivery_method = params.get("delivery_method")
+    if delivery_method:
+        queryset = queryset.filter(delivery_method=delivery_method)
+
+    start_date = params.get("start_date")
+    end_date = params.get("end_date")
+    time_basis = params.get("time_basis", "created")
+
+    if start_date or end_date:
+        if time_basis == "service":
+            queryset = _annotate_service_date(queryset)
+            if start_date:
+                queryset = queryset.filter(service_date__gte=start_date)
+            if end_date:
+                queryset = queryset.filter(service_date__lte=end_date)
+        else:
+            if start_date:
+                queryset = queryset.filter(created_at__date__gte=start_date)
+            if end_date:
+                queryset = queryset.filter(created_at__date__lte=end_date)
+
+    return queryset
+
+
+class SalesHistoryListView(generics.ListAPIView):
+    """Historial de ventas para usuarios autorizados."""
+
+    serializer_class = OrderSerializer
+    permission_classes = (IsAdminUser,)
+    pagination_class = ProductPagination
+    filter_backends = (filters.OrderingFilter,)
+    ordering_fields = ("created_at", "total_amount", "status")
+    ordering = ("-created_at",)
+
+    def get_queryset(self):
+        query_serializer = SalesHistoryQuerySerializer(data=self.request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+        params = query_serializer.validated_data
+
+        queryset = Order.objects.prefetch_related("items__product").all()
+        return _apply_sales_filters(queryset, params)
+
+
+class SalesMetricsView(APIView):
+    """Métricas básicas de ventas para supervisión y administración."""
+
+    permission_classes = (IsAdminUser,)
+
+    def get(self, request):
+        query_serializer = SalesHistoryQuerySerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+        params = query_serializer.validated_data
+
+        queryset = _apply_sales_filters(Order.objects.all(), params)
+
+        base = queryset.aggregate(
+            total_sold=Coalesce(
+                Sum("total_amount"),
+                Value(0),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            ),
+            total_orders=Count("id"),
+            average_ticket=Coalesce(
+                Avg("total_amount"),
+                Value(0),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            ),
+        )
+
+        by_delivery = queryset.values("delivery_method").annotate(
+            total_orders=Count("id"),
+            total_sold=Coalesce(
+                Sum("total_amount"),
+                Value(0),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            ),
+        )
+
+        response_data = {
+            "filters": {
+                "start_date": params.get("start_date"),
+                "end_date": params.get("end_date"),
+                "status": params.get("status"),
+                "order_source": params.get("order_source"),
+                "delivery_method": params.get("delivery_method"),
+                "time_basis": params.get("time_basis", "created"),
+            },
+            "total_sold": base["total_sold"],
+            "total_orders": base["total_orders"],
+            "average_ticket": base["average_ticket"],
+            "by_delivery_method": list(by_delivery),
+        }
+        return Response(response_data)
+
+
+class AdminManualSaleCreateView(generics.CreateAPIView):
+    """Registro manual de ventas por parte de usuarios administrativos."""
+
+    serializer_class = AdminManualSaleCreateSerializer
+    permission_classes = (IsAdminUser,)
+
+
+class AdminManualSaleDeleteView(generics.DestroyAPIView):
+    """Permite eliminar ventas manuales desde la vista administrativa."""
+
+    permission_classes = (IsAdminUser,)
+    queryset = Order.objects.filter(order_source="manual")

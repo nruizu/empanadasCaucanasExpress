@@ -1,11 +1,8 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 async function request(path: string, options: RequestInit = {}) {
   const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("cce_token")
-      : null;
+    typeof window !== "undefined" ? localStorage.getItem("cce_token") : null;
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -44,7 +41,10 @@ export function getCart(cartId: number | string) {
 }
 
 // 🔹 Eliminar un producto del carrito
-export function removeProduct(cartId: number | string, cartProductId: number | string) {
+export function removeProduct(
+  cartId: number | string,
+  cartProductId: number | string,
+) {
   return request(`/api/cart/${cartId}/remove_product/`, {
     method: "DELETE",
     body: JSON.stringify({ cart_product_id: cartProductId }),
@@ -59,7 +59,10 @@ export function clearCart(cartId: number | string) {
 }
 
 // 🔹 Actualizar cantidad de un producto
-export function updateQuantity(cartProductId: number | string, quantity: number) {
+export function updateQuantity(
+  cartProductId: number | string,
+  quantity: number,
+) {
   return request("/api/cart/update_quantity/", {
     method: "PATCH",
     body: JSON.stringify({ cart_product_id: cartProductId, quantity }),

@@ -6,6 +6,29 @@ import useAuth from "@/context/AuthContext";
 import * as cartApi from "@/lib/cart-api";
 import CartItem from "./CartItem";
 
+interface CartProductItem {
+  id: number | string;
+  quantity: number;
+  product: {
+    id: number;
+    name: string;
+    price: number | string;
+  };
+}
+
+interface CartData {
+  id: number | string;
+  products: CartProductItem[];
+  total_price?: number | string;
+}
+
+const getCartErrorMessage = (err: unknown, fallback: string) => {
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return fallback;
+};
+
 export function emitCartUpdate() {
   window.dispatchEvent(new CustomEvent("cart:updated"));
 }
@@ -13,16 +36,21 @@ export function emitCartUpdate() {
 export default function CartPageClient() {
   const router = useRouter();
   const { token } = useAuth();
-  const [cart, setCart] = useState<any | null>(null);
+  const [cart, setCart] = useState<CartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => { setIsClient(true); }, []);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (token === null) return;
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     const load = async () => {
       try {
@@ -31,8 +59,8 @@ export default function CartPageClient() {
         if (typeof window !== "undefined") {
           localStorage.setItem("cce_cart_id", data.id);
         }
-      } catch (err: any) {
-        setError(err.message || "Error cargando carrito");
+      } catch (err: unknown) {
+        setError(getCartErrorMessage(err, "Error cargando carrito"));
       } finally {
         setLoading(false);
       }
@@ -47,18 +75,21 @@ export default function CartPageClient() {
       const updated = await cartApi.removeProduct(cart.id, cartProductId);
       setCart(updated);
       emitCartUpdate();
-    } catch (err: any) {
-      setError(err.message || "Error eliminando producto");
+    } catch (err: unknown) {
+      setError(getCartErrorMessage(err, "Error eliminando producto"));
     }
   };
 
-  const handleUpdateQuantity = async (cartProductId: number | string, quantity: number) => {
+  const handleUpdateQuantity = async (
+    cartProductId: number | string,
+    quantity: number,
+  ) => {
     try {
       const updated = await cartApi.updateQuantity(cartProductId, quantity);
       setCart(updated);
       emitCartUpdate();
-    } catch (err: any) {
-      setError(err.message || "Error actualizando cantidad");
+    } catch (err: unknown) {
+      setError(getCartErrorMessage(err, "Error actualizando cantidad"));
     }
   };
 
@@ -68,17 +99,19 @@ export default function CartPageClient() {
       const updated = await cartApi.clearCart(cart.id);
       setCart(updated);
       emitCartUpdate();
-    } catch (err: any) {
-      setError(err.message || "Error vaciando carrito");
+    } catch (err: unknown) {
+      setError(getCartErrorMessage(err, "Error vaciando carrito"));
     }
   };
 
-  if (!isClient) return <div>Loading...</div> as any;
+  if (!isClient) return <div>Loading...</div>;
 
   if (!token) {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <div className="p-6 bg-white rounded">Debes iniciar sesión para ver tu carrito.</div>
+        <div className="p-6 bg-white rounded">
+          Debes iniciar sesión para ver tu carrito.
+        </div>
       </main>
     );
   }
@@ -86,7 +119,9 @@ export default function CartPageClient() {
   if (loading) return <div>Loading...</div>;
   if (error) return <div className="text-red-600">{error}</div>;
 
-  const hasProducts = cart?.products?.length > 0;
+  const products = cart?.products ?? [];
+  const hasProducts = products.length > 0;
+  const totalPrice = Number(cart?.total_price ?? 0);
 
   return (
     <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
@@ -105,7 +140,7 @@ export default function CartPageClient() {
 
         {hasProducts ? (
           <>
-            {cart.products.map((p: any) => (
+            {products.map((p) => (
               <CartItem
                 key={p.id}
                 id={p.id}
@@ -117,11 +152,11 @@ export default function CartPageClient() {
             ))}
 
             {/* Total y botón checkout */}
-            {cart.total_price !== undefined && (
+            {cart?.total_price !== undefined && (
               <div className="mt-6 border-t pt-4">
                 <div className="flex justify-end mb-4">
                   <span className="text-lg font-semibold">
-                    Total: ${Number(cart.total_price).toFixed(0)}
+                    Total: ${totalPrice.toFixed(0)}
                   </span>
                 </div>
                 <div className="flex justify-end">

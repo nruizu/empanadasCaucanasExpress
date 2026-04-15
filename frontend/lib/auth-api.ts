@@ -1,6 +1,5 @@
 const API_BASE_URL =
-  (globalThis as { process?: { env?: { NEXT_PUBLIC_API_URL?: string } } }).process?.env
-    ?.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 export interface MeResponse {
   user_id: number;
@@ -73,7 +72,9 @@ async function request(path: string, options: RequestInit = {}) {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     // Si tiene campos de validación (password, username, etc), lanza el objeto completo
-    const hasFieldErrors = Object.keys(body).some((k) => k !== "detail" && k !== "error");
+    const hasFieldErrors = Object.keys(body).some(
+      (k) => k !== "detail" && k !== "error",
+    );
     if (hasFieldErrors) throw body;
     throw new Error(body.detail || body.error || res.statusText);
   }
@@ -99,7 +100,14 @@ export async function register({
   const res = await fetch(`${API_BASE_URL}/auth/registro/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password, email, full_name, phone, address }),
+    body: JSON.stringify({
+      username,
+      password,
+      email,
+      full_name,
+      phone,
+      address,
+    }),
   });
 
   const data = await res.json();
@@ -112,7 +120,7 @@ export async function register({
 }
 
 export const login = (payload: { username: string; password: string }) =>
-  request('/auth/login/', { method: 'POST', body: JSON.stringify(payload) });
+  request("/auth/login/", { method: "POST", body: JSON.stringify(payload) });
 
 export async function logout(token: string) {
   return fetch(`${API_BASE_URL}/auth/logout/`, {
@@ -124,8 +132,8 @@ export async function logout(token: string) {
 }
 
 export async function me(token: string) {
-  return request('/auth/me/', {
-    method: 'GET',
+  return request("/auth/me/", {
+    method: "GET",
     headers: {
       Authorization: `Token ${token}`,
     },
@@ -134,10 +142,15 @@ export async function me(token: string) {
 
 export async function updateMe(
   token: string,
-  payload: { email?: string; full_name?: string; phone?: string; address?: string },
+  payload: {
+    email?: string;
+    full_name?: string;
+    phone?: string;
+    address?: string;
+  },
 ) {
-  return request('/auth/me/', {
-    method: 'PATCH',
+  return request("/auth/me/", {
+    method: "PATCH",
     headers: {
       Authorization: `Token ${token}`,
     },

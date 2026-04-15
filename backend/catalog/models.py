@@ -2,6 +2,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import time
+from django.contrib.auth.models import User
 
 
 class Category(models.Model):
@@ -62,6 +63,11 @@ class Order(models.Model):
         ("cancelled", "Cancelado"),
     ]
 
+    SOURCE_CHOICES = [
+        ("online", "Online"),
+        ("manual", "Manual"),
+    ]
+
     # Información básica
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -100,6 +106,20 @@ class Order(models.Model):
     # Total del pedido
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
+    # Trazabilidad del origen de la venta
+    order_source = models.CharField(
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default="online",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_orders",
+    )
+
     class Meta:
         ordering = ["-created_at"]
         verbose_name = "Pedido"
@@ -129,6 +149,14 @@ class Order(models.Model):
         if self.scheduled_date:
             if self.scheduled_date < timezone.now().date():
                 raise ValidationError("La fecha programada debe ser una fecha futura")
+
+        if self.delivery_method == "scheduled" and not self.scheduled_date:
+            raise ValidationError(
+                "Debe especificar fecha programada para pedidos futuros"
+            )
+
+        if self.delivery_method == "delivery" and not self.delivery_address:
+            raise ValidationError("Debe especificar dirección para entrega a domicilio")
 
         # Validar que si es pickup, tenga fecha y hora
         if self.delivery_method == "pickup":
