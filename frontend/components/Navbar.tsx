@@ -62,7 +62,7 @@ export default function Navbar() {
       <nav className="fixed top-0 left-0 right-0 z-30 bg-white shadow px-4 h-16 flex items-center justify-between">
         <button
           onClick={() => setOpen(true)}
-          className="text-2xl font-bold text-[var(--cce-green-dark)]"
+          className="text-2xl font-bold text-[var(--cce-green-dark)] hover:opacity-80"
         >
           ☰
         </button>
@@ -76,7 +76,7 @@ export default function Navbar() {
 
         {/* Derecha: carrito */}
         {token ? (
-          <Link href="/carrito" className="relative p-2">
+          <Link href="/carrito" className="relative cursor-pointer p-2 hover:opacity-80">
             {/* Ícono SVG carrito */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -116,15 +116,15 @@ export default function Navbar() {
       <aside
         className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-50 transform transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="p-6 flex flex-col gap-6">
-          <button onClick={() => setOpen(false)} className="self-end text-xl">
+        <div className="p-6 flex h-full flex-col gap-6">
+          <button onClick={() => setOpen(false)} className="self-end text-xl cursor-pointer hover:opacity-70">
             ✕
           </button>
 
           <Link
             href="/"
             onClick={() => setOpen(false)}
-            className="text-lg font-semibold"
+            className="text-lg font-semibold cursor-pointer hover:opacity-80"
           >
             Inicio
           </Link>
@@ -134,14 +134,14 @@ export default function Navbar() {
               <Link
                 href="/admin/catalogo"
                 onClick={() => setOpen(false)}
-                className="text-lg font-semibold"
+                className="text-lg font-semibold cursor-pointer hover:opacity-80"
               >
                 Gestión catálogo
               </Link>
               <Link
                 href="/admin/ventas"
                 onClick={() => setOpen(false)}
-                className="text-lg font-semibold"
+                className="text-lg font-semibold cursor-pointer hover:opacity-80"
               >
                 Historial de ventas
               </Link>
@@ -153,13 +153,20 @@ export default function Navbar() {
               <Link
                 href="/cuenta"
                 onClick={() => setOpen(false)}
-                className="text-lg font-semibold"
+                className="text-lg font-semibold cursor-pointer hover:opacity-80"
               >
                 Cuenta
               </Link>
+              <Link
+                href="/ordenes"
+                onClick={() => setOpen(false)}
+                className="text-lg font-semibold cursor-pointer hover:opacity-80"
+              >
+                Mis pedidos
+              </Link>
               <button
                 onClick={handleLogout}
-                className="text-left text-lg font-semibold text-red-600"
+                className="text-left text-lg font-semibold text-red-600 cursor-pointer hover:opacity-80"
               >
                 Cerrar sesión
               </button>
@@ -169,18 +176,46 @@ export default function Navbar() {
               <Link
                 href="/login"
                 onClick={() => setOpen(false)}
-                className="text-lg font-semibold"
+                className="text-lg font-semibold cursor-pointer hover:opacity-80"
               >
                 Iniciar sesión
               </Link>
               <Link
                 href="/registro"
                 onClick={() => setOpen(false)}
-                className="text-lg font-semibold"
+                className="text-lg font-semibold cursor-pointer hover:opacity-80"
               >
                 Registrarse
               </Link>
             </>
+          )}
+        </div>
+      </aside>
+            </>
+          )}
+
+          {token && (
+            <div className="mt-auto flex flex-col gap-4">
+              {user?.is_staff && (
+                <div className="border-t border-[color-mix(in_srgb,var(--cce-green-dark)_18%,white)] pt-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--cce-text-muted)]">
+                    Administración
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <Link href="/admin/catalogo" onClick={() => setOpen(false)} className="text-lg font-semibold cursor-pointer hover:opacity-80">
+                      Gestión catálogo
+                    </Link>
+                    <Link href="/admin/pedidos" onClick={() => setOpen(false)} className="text-lg font-semibold cursor-pointer hover:opacity-80">
+                      Gestión de pedidos
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              <button onClick={handleLogout} className="cursor-pointer text-left text-lg font-semibold text-red-600 hover:opacity-80">
+                Cerrar sesión
+              </button>
+            </div>
           )}
         </div>
       </aside>

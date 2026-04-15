@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import * as authApi from "@/lib/auth-api";
+import * as cartApi from "@/lib/cart-api";
 
 interface CheckoutFormData {
   customer_name: string;
@@ -118,6 +119,18 @@ export default function CheckoutForm() {
         throw new Error(
           errorData.non_field_errors?.[0] || "Error al crear el pedido",
         );
+      }
+
+      if (token) {
+        try {
+          const cart = await cartApi.getMyCart();
+          if (cart?.id && Array.isArray(cart?.products) && cart.products.length > 0) {
+            await cartApi.clearCart(cart.id);
+          }
+          window.dispatchEvent(new CustomEvent("cart:updated"));
+        } catch {
+          // no-op: the order was created, so we avoid blocking navigation
+        }
       }
 
       alert("¡Pedido creado exitosamente!");

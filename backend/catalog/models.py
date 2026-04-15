@@ -71,6 +71,13 @@ class Order(models.Model):
     # Información básica
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(
+        "auth.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="orders",
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
     # Información del cliente
