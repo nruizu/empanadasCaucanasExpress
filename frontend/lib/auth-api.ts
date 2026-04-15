@@ -1,4 +1,6 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_BASE_URL =
+  (globalThis as { process?: { env?: { NEXT_PUBLIC_API_URL?: string } } }).process?.env
+    ?.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 export interface MeResponse {
   user_id: number;
@@ -10,13 +12,62 @@ export interface MeResponse {
   address: string;
 }
 
+export interface OrderHistoryItem {
+  id: number;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string | null;
+  delivery_method: "pickup" | "delivery" | "scheduled";
+  status: "pending" | "confirmed" | "preparing" | "ready" | "completed" | "cancelled";
+  pickup_date: string | null;
+  pickup_time: string | null;
+  scheduled_date: string | null;
+  delivery_address: string | null;
+  notes: string | null;
+  total_amount: string;
+  created_at: string;
+  updated_at: string;
+  items: OrderHistoryLineItem[];
+}
+
+export interface OrderHistoryLineItem {
+  id: number;
+  quantity: number;
+  unit_price: string;
+  subtotal: string;
+  product: {
+    id: number;
+    name: string;
+    slug: string;
+    description: string;
+    price: string;
+    image: string;
+    is_featured: boolean;
+    category: {
+      id: number;
+      name: string;
+      slug: string;
+      image: string;
+    };
+  };
+}
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 async function request(path: string, options: RequestInit = {}) {
+  const { headers, ...restOptions } = options;
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
+    ...restOptions,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...(headers || {}),
     },
-    ...options,
   });
 
   if (!res.ok) {
@@ -94,4 +145,13 @@ export async function updateMe(
   });
 }
 
-export default { register, login, logout, me, updateMe };
+export async function myOrderHistory(token: string) {
+  return request('/report/orders/me/', {
+    method: 'GET',
+    headers: {
+      Authorization: `Token ${token}`,
+    },
+  }) as Promise<PaginatedResponse<OrderHistoryItem>>;
+}
+
+export default { register, login, logout, me, updateMe, myOrderHistory };

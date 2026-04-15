@@ -1,9 +1,14 @@
 from django.shortcuts import get_object_or_404
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import filters, generics
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import AllowAny, IsAdminUser
+
+from backend.cart.models import Cart
 
 from .models import Category, Product, Order
+from .models import OrderItem
 from .serializers import (
     CategorySerializer,
     ProductAdminSerializer,
@@ -108,6 +113,11 @@ class OrderListCreateView(generics.ListCreateAPIView):
     ordering = ("-created_at",)
     search_fields = ("customer_name", "customer_phone", "customer_email")
 
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [IsAdminUser()]
+        return [AllowAny()]
+
     def get_queryset(self):
         queryset = Order.objects.prefetch_related("items__product").all()
 
@@ -119,6 +129,10 @@ class OrderListCreateView(generics.ListCreateAPIView):
         delivery_method = self.request.query_params.get("delivery_method")
         if delivery_method:
             queryset = queryset.filter(delivery_method=delivery_method)
+
+        today = self.request.query_params.get("today")
+        if today and today.lower() in {"1", "true", "yes", "si"}:
+            queryset = queryset.filter(created_at__date=timezone.localdate())
 
         return queryset
 
@@ -132,6 +146,7 @@ class OrderListCreateView(generics.ListCreateAPIView):
         validated_data = serializer.validated_data
 
         order_data = {
+            "user": user,
             "customer_name": validated_data.get("customer_name")
             or (profile.full_name if profile else "")
             or user.username,
@@ -145,7 +160,33 @@ class OrderListCreateView(generics.ListCreateAPIView):
                 profile.address if profile else ""
             )
 
-        serializer.save(**order_data)
+        with transaction.atomic():
+            order = serializer.save(**order_data)
+
+            cart, _ = Cart.objects.get_or_create(user=user)
+            cart_items = cart.cart_products.select_related("product").all()
+
+            total_amount = 0
+            order_items = []
+
+            for cart_item in cart_items:
+                unit_price = cart_item.product.price
+                subtotal = unit_price * cart_item.quantity
+                total_amount += subtotal
+                order_items.append(
+                    OrderItem(
+                        order=order,
+                        product=cart_item.product,
+                        quantity=cart_item.quantity,
+                        unit_price=unit_price,
+                    )
+                )
+
+            if order_items:
+                OrderItem.objects.bulk_create(order_items)
+
+            order.total_amount = total_amount
+            order.save(update_fields=["total_amount"])
 
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -156,4 +197,5 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
 
     serializer_class = OrderSerializer
+    permission_classes = (IsAdminUser,)
     queryset = Order.objects.prefetch_related("items__product").all()
