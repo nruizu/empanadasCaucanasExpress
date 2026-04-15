@@ -6,7 +6,7 @@ import AddToCartButton from "@/components/catalog/AddToCartButton";
 import type { CatalogProduct } from "@/types/catalog";
 
 interface ProductCardProps {
-  product: Product;
+  product: CatalogProduct;
   onAddToCart?: (productId: number, productName: string) => void;
 }
 

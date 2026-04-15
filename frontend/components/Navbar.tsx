@@ -26,7 +26,15 @@ export default function Navbar() {
     }
   };
 
-  useEffect(() => { loadCart(); }, [token]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadCart();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [token]);
 
   useEffect(() => {
     window.addEventListener("cart:updated", loadCart);
@@ -85,9 +93,14 @@ export default function Navbar() {
           <Link href="/" onClick={() => setOpen(false)} className="text-lg font-semibold">Inicio</Link>
 
           {token && user?.is_staff && (
-            <Link href="/admin/catalogo" onClick={() => setOpen(false)} className="text-lg font-semibold">
-              Gestión catálogo
-            </Link>
+            <>
+              <Link href="/admin/catalogo" onClick={() => setOpen(false)} className="text-lg font-semibold">
+                Gestión catálogo
+              </Link>
+              <Link href="/admin/ventas" onClick={() => setOpen(false)} className="text-lg font-semibold">
+                Historial de ventas
+              </Link>
+            </>
           )}
 
           {token ? (

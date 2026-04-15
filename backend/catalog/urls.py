@@ -2,6 +2,8 @@ from django.urls import path
 
 from .views import (
     ActiveCategoryListView,
+    AdminManualSaleCreateView,
+    AdminManualSaleDeleteView,
     ActiveProductListView,
     AdminProductDetailView,
     AdminProductListCreateView,
@@ -9,6 +11,8 @@ from .views import (
     FeaturedProductListView,
     OrderListCreateView,
     OrderDetailView,
+    SalesHistoryListView,
+    SalesMetricsView,
 )
 
 urlpatterns = [
@@ -48,5 +52,25 @@ urlpatterns = [
         "orders/<int:pk>/",
         OrderDetailView.as_view(),
         name="order-detail",
+    ),
+    path(
+        "admin/sales/history/",
+        SalesHistoryListView.as_view(),
+        name="admin-sales-history",
+    ),
+    path(
+        "admin/sales/metrics/",
+        SalesMetricsView.as_view(),
+        name="admin-sales-metrics",
+    ),
+    path(
+        "admin/sales/register/",
+        AdminManualSaleCreateView.as_view(),
+        name="admin-sales-register",
+    ),
+    path(
+        "admin/sales/<int:pk>/",
+        AdminManualSaleDeleteView.as_view(),
+        name="admin-sales-delete",
     ),
 ]

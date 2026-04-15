@@ -69,6 +69,7 @@ jobs:
       - name: Check format
         run: |
           black --check --diff .
+          
       - name: Run Bandit
         run: |
           bandit -c bandit.yaml -r .
