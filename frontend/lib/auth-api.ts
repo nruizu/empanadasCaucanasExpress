@@ -1,5 +1,15 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
+export interface MeResponse {
+  user_id: number;
+  username: string;
+  email: string;
+  is_staff: boolean;
+  full_name: string;
+  phone: string;
+  address: string;
+}
+
 async function request(path: string, options: RequestInit = {}) {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
@@ -20,11 +30,25 @@ async function request(path: string, options: RequestInit = {}) {
   return res.json().catch(() => ({}));
 }
 
-export async function register({ username, password, email }: { username: string; password: string; email?: string }) {
+export async function register({
+  username,
+  password,
+  email,
+  full_name,
+  phone,
+  address,
+}: {
+  username: string;
+  password: string;
+  email: string;
+  full_name: string;
+  phone: string;
+  address: string;
+}) {
   const res = await fetch(`${API_BASE_URL}/auth/registro/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password, email }),
+    body: JSON.stringify({ username, password, email, full_name, phone, address }),
   });
 
   const data = await res.json();
@@ -57,4 +81,17 @@ export async function me(token: string) {
   });
 }
 
-export default { register, login, logout, me };
+export async function updateMe(
+  token: string,
+  payload: { email?: string; full_name?: string; phone?: string; address?: string },
+) {
+  return request('/auth/me/', {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Token ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export default { register, login, logout, me, updateMe };

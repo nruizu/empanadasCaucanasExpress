@@ -91,9 +91,14 @@ export default function Navbar() {
           )}
 
           {token ? (
-            <button onClick={handleLogout} className="text-left text-lg font-semibold text-red-600">
-              Cerrar sesión
-            </button>
+            <>
+              <Link href="/cuenta" onClick={() => setOpen(false)} className="text-lg font-semibold">
+                Cuenta
+              </Link>
+              <button onClick={handleLogout} className="text-left text-lg font-semibold text-red-600">
+                Cerrar sesión
+              </button>
+            </>
           ) : (
             <>
               <Link href="/login" onClick={() => setOpen(false)} className="text-lg font-semibold">Iniciar sesión</Link>

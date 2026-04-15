@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
+import * as authApi from "@/lib/auth-api";
 
 interface CheckoutFormData {
   customer_name: string;
@@ -33,6 +36,34 @@ export default function CheckoutForm() {
     delivery_address: "",
     notes: "",
   });
+
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+
+    const loadAccountData = async () => {
+      try {
+        const me = await authApi.me(token);
+        if (cancelled) return;
+        setFormData((prev) => ({
+          ...prev,
+          customer_name: me.full_name || prev.customer_name,
+          customer_phone: me.phone || prev.customer_phone,
+          customer_email: me.email || prev.customer_email,
+          delivery_address: me.address || prev.delivery_address,
+        }));
+      } catch {
+        // no-op: checkout can still be completed manually
+      }
+    };
+
+    void loadAccountData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -103,6 +134,9 @@ export default function CheckoutForm() {
             <label className="block text-sm font-medium mb-1">
               Nombre completo *
             </label>
+            <div className="mb-1 text-xs text-gray-500">
+              ¿Necesitas actualizar tus datos? <Link href="/cuenta" className="text-[var(--cce-green-dark)] underline">Ir a cuenta</Link>
+            </div>
             <input
               type="text"
               name="customer_name"

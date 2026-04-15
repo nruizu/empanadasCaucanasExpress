@@ -122,6 +122,31 @@ class OrderListCreateView(generics.ListCreateAPIView):
 
         return queryset
 
+    def perform_create(self, serializer):
+        user = self.request.user
+        if not user.is_authenticated:
+            serializer.save()
+            return
+
+        profile = getattr(user, "profile", None)
+        validated_data = serializer.validated_data
+
+        order_data = {
+            "customer_name": validated_data.get("customer_name")
+            or (profile.full_name if profile else "")
+            or user.username,
+            "customer_phone": validated_data.get("customer_phone")
+            or (profile.phone if profile else ""),
+            "customer_email": validated_data.get("customer_email") or user.email,
+        }
+
+        if validated_data.get("delivery_method") == "delivery":
+            order_data["delivery_address"] = validated_data.get("delivery_address") or (
+                profile.address if profile else ""
+            )
+
+        serializer.save(**order_data)
+
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     """

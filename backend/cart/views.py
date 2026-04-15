@@ -15,6 +15,8 @@ class CartViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Cart.objects.filter(user=self.request.user)
 
+    # gets or creates the cart for the authenticated user then gets
+    # serialized and returns the cart data in a JSON response
     @action(detail=False, methods=["get"])
     def my_cart(self, request):
         cart, _ = Cart.objects.get_or_create(user=request.user)
@@ -27,6 +29,8 @@ class CartViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(cart)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    # uses transactions to ensure that the cart is updated only
+    # if all operations succeed, preventing data inconsistencies
     @action(detail=False, methods=["post"])
     @transaction.atomic
     def add_product(self, request):
@@ -50,6 +54,9 @@ class CartViewSet(viewsets.ModelViewSet):
 
         cart, _ = Cart.objects.get_or_create(user=request.user)
 
+        # get_or_create is used to either get the existing CartProduct or create
+        # a new one if it doesn't exist. If the CartProduct already exists,
+        # the quantity is updated by adding the new quantity
         cart_product, created = CartProduct.objects.get_or_create(
             cart=cart, product_id=product_id, defaults={"quantity": quantity}
         )
