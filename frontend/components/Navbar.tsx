@@ -62,7 +62,7 @@ export default function Navbar() {
       <nav className="fixed top-0 left-0 right-0 z-30 bg-white shadow px-4 h-16 flex items-center justify-between">
         <button
           onClick={() => setOpen(true)}
-          className="text-2xl font-bold text-[var(--cce-green-dark)] hover:opacity-80"
+          className="cursor-pointer text-2xl font-bold text-[var(--cce-green-dark)] hover:opacity-80"
         >
           ☰
         </button>
@@ -129,25 +129,6 @@ export default function Navbar() {
             Inicio
           </Link>
 
-          {token && user?.is_staff && (
-            <>
-              <Link
-                href="/admin/catalogo"
-                onClick={() => setOpen(false)}
-                className="text-lg font-semibold cursor-pointer hover:opacity-80"
-              >
-                Gestión catálogo
-              </Link>
-              <Link
-                href="/admin/ventas"
-                onClick={() => setOpen(false)}
-                className="text-lg font-semibold cursor-pointer hover:opacity-80"
-              >
-                Historial de ventas
-              </Link>
-            </>
-          )}
-
           {token ? (
             <>
               <Link
@@ -189,32 +170,37 @@ export default function Navbar() {
               </Link>
             </>
           )}
-        </div>
-      </aside>
-            </>
-          )}
 
-          {token && (
+          {token && user?.is_staff && (
             <div className="mt-auto flex flex-col gap-4">
-              {user?.is_staff && (
-                <div className="border-t border-[color-mix(in_srgb,var(--cce-green-dark)_18%,white)] pt-4">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--cce-text-muted)]">
-                    Administración
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    <Link href="/admin/catalogo" onClick={() => setOpen(false)} className="text-lg font-semibold cursor-pointer hover:opacity-80">
-                      Gestión catálogo
-                    </Link>
-                    <Link href="/admin/pedidos" onClick={() => setOpen(false)} className="text-lg font-semibold cursor-pointer hover:opacity-80">
-                      Gestión de pedidos
-                    </Link>
-                  </div>
+              <div className="border-t border-[color-mix(in_srgb,var(--cce-green-dark)_18%,white)] pt-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--cce-text-muted)]">
+                  Administración
+                </p>
+                <div className="flex flex-col gap-3">
+                  <Link
+                    href="/admin/catalogo"
+                    onClick={() => setOpen(false)}
+                    className="text-lg font-semibold cursor-pointer hover:opacity-80"
+                  >
+                    Gestión catálogo
+                  </Link>
+                  <Link
+                    href="/admin/pedidos"
+                    onClick={() => setOpen(false)}
+                    className="text-lg font-semibold cursor-pointer hover:opacity-80"
+                  >
+                    Gestión de pedidos
+                  </Link>
+                  <Link
+                    href="/admin/ventas"
+                    onClick={() => setOpen(false)}
+                    className="text-lg font-semibold cursor-pointer hover:opacity-80"
+                  >
+                    Historial de ventas
+                  </Link>
                 </div>
-              )}
-
-              <button onClick={handleLogout} className="cursor-pointer text-left text-lg font-semibold text-red-600 hover:opacity-80">
-                Cerrar sesión
-              </button>
+              </div>
             </div>
           )}
         </div>

@@ -146,6 +146,9 @@ class OrderSerializer(serializers.ModelSerializer):
                 "scheduled_date": data.get(
                     "scheduled_date", self.instance.scheduled_date
                 ),
+                "delivery_address": data.get(
+                    "delivery_address", self.instance.delivery_address
+                ),
             }
             instance = Order(**merged_data)
         else:
