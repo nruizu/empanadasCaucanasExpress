@@ -11,6 +11,20 @@ export default function Navbar() {
   const { token, user, logout } = useAuth();
   const [cartCount, setCartCount] = useState<number>(0);
   const [open, setOpen] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setIsHydrated(true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  const isLoggedIn = isHydrated && Boolean(token);
+  const isStaff = isLoggedIn && Boolean(user?.is_staff);
 
   const tokenRef = useRef(token);
   useEffect(() => {
@@ -75,7 +89,7 @@ export default function Navbar() {
         </Link>
 
         {/* Derecha: carrito */}
-        {token ? (
+        {isLoggedIn ? (
           <Link
             href="/carrito"
             className="relative cursor-pointer p-2 hover:opacity-80"
@@ -135,7 +149,7 @@ export default function Navbar() {
             Inicio
           </Link>
 
-          {token ? (
+          {isLoggedIn ? (
             <>
               <Link
                 href="/cuenta"
@@ -177,7 +191,7 @@ export default function Navbar() {
             </>
           )}
 
-          {token && user?.is_staff && (
+          {isStaff && (
             <div className="mt-auto flex flex-col gap-4">
               <div className="border-t border-[color-mix(in_srgb,var(--cce-green-dark)_18%,white)] pt-4">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--cce-text-muted)]">
