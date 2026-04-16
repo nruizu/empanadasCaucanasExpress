@@ -77,10 +77,10 @@ def _build_sales_series(orders, group_by):
             weekday_labels = [
                 "Lunes",
                 "Martes",
-                "Miercoles",
+                "Miércoles",
                 "Jueves",
                 "Viernes",
-                "Sabado",
+                "Sábado",
                 "Domingo",
             ]
             return [
@@ -101,10 +101,10 @@ def _build_sales_series(orders, group_by):
         weekday_labels = [
             "Lunes",
             "Martes",
-            "Miercoles",
+            "Miércoles",
             "Jueves",
             "Viernes",
-            "Sabado",
+            "Sábado",
             "Domingo",
         ]
         indices = np.array([order.created_at.weekday() for order in orders], dtype=int)
@@ -235,7 +235,7 @@ class SalesAnalysisView(APIView):
         )
 
         category_labels = [
-            item["product__category__name"] or "Sin categoria"
+            item["product__category__name"] or "Sin categoría"
             for item in category_sales
         ]
         category_values = [float(item["total_sold"] or 0) for item in category_sales]
@@ -243,7 +243,7 @@ class SalesAnalysisView(APIView):
         category_chart = _build_bar_chart_image(
             category_labels or ["Sin datos"],
             category_values or [0.0],
-            title="Ventas por categoria",
+            title="Ventas por categoría",
             y_label="Ingresos",
             color="#285e61",
         )
@@ -272,7 +272,7 @@ class SalesAnalysisView(APIView):
             ],
             "category_sales": [
                 {
-                    "category": item["product__category__name"] or "Sin categoria",
+                    "category": item["product__category__name"] or "Sin categoría",
                     "total_quantity": int(item["total_quantity"]),
                     "total_sold": float(item["total_sold"] or 0),
                 }
