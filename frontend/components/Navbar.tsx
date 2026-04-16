@@ -193,6 +193,13 @@ export default function Navbar() {
                     Gestión de pedidos
                   </Link>
                   <Link
+                    href="/admin/cobertura"
+                    onClick={() => setOpen(false)}
+                    className="text-lg font-semibold cursor-pointer hover:opacity-80"
+                  >
+                    Cobertura domicilios
+                  </Link>
+                  <Link
                     href="/admin/ventas"
                     onClick={() => setOpen(false)}
                     className="text-lg font-semibold cursor-pointer hover:opacity-80"

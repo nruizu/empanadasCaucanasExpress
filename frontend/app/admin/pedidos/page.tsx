@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
-import { getAdminOrders, updateAdminOrderStatus } from "@/lib/admin-orders-api";
+import {
+  deleteAdminOrder,
+  getAdminOrders,
+  updateAdminOrderStatus,
+} from "@/lib/admin-orders-api";
 import type { OrderHistoryItem } from "@/lib/auth-api";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -52,6 +56,18 @@ function formatDate(dateValue: string | null) {
   });
 }
 
+function getDeliveryMapsUrl(order: OrderHistoryItem) {
+  if (order.delivery_maps_url) {
+    return order.delivery_maps_url;
+  }
+
+  if (!order.delivery_address) {
+    return "";
+  }
+
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.delivery_address)}`;
+}
+
 export default function AdminOrdersPage() {
   const router = useRouter();
   const { token, user } = useAuth();
@@ -67,6 +83,7 @@ export default function AdminOrdersPage() {
   const [expandedOrders, setExpandedOrders] = useState<Record<number, boolean>>({});
   const [statusDrafts, setStatusDrafts] = useState<Record<number, OrderHistoryItem["status"]>>({});
   const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
+  const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
 
   const [deliveryMethod, setDeliveryMethod] = useState<"" | "pickup" | "delivery" | "scheduled">("");
   const [status, setStatus] = useState<"" | "pending" | "confirmed" | "preparing" | "ready" | "completed" | "cancelled">("");
@@ -140,6 +157,11 @@ export default function AdminOrdersPage() {
       return;
     }
 
+    if (order.status === "cancelled") {
+      setError("Un pedido cancelado no puede cambiar de estado.");
+      return;
+    }
+
     setUpdatingOrderId(orderId);
     setError(null);
     setSuccess(null);
@@ -159,6 +181,42 @@ export default function AdminOrdersPage() {
       setError(err?.message || "No se pudo actualizar el estado del pedido");
     } finally {
       setUpdatingOrderId(null);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: number) => {
+    const confirmed = window.confirm(
+      `Se eliminara permanentemente el pedido ${orderId}. Esta accion no se puede deshacer.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingOrderId(orderId);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await deleteAdminOrder(orderId);
+      setOrders((current: OrderHistoryItem[]) =>
+        current.filter((item: OrderHistoryItem) => item.id !== orderId),
+      );
+      setStatusDrafts((current: Record<number, OrderHistoryItem["status"]>) => {
+        const next = { ...current };
+        delete next[orderId];
+        return next;
+      });
+      setExpandedOrders((current) => {
+        const next = { ...current };
+        delete next[orderId];
+        return next;
+      });
+      setCount((current) => Math.max(0, current - 1));
+      setSuccess(`Pedido ${orderId} eliminado correctamente.`);
+    } catch (err: any) {
+      setError(err?.message || "No se pudo borrar el pedido");
+    } finally {
+      setDeletingOrderId(null);
     }
   };
 
@@ -360,7 +418,48 @@ export default function AdminOrdersPage() {
                     <p><strong>Tipo:</strong> {DELIVERY_LABELS[order.delivery_method] || order.delivery_method}</p>
                     <p><strong>Fecha:</strong> {formatDate(order.created_at)}</p>
                     <p><strong>Total:</strong> ${Number(order.total_amount).toFixed(0)}</p>
+                    {order.delivery_method === "delivery" && (
+                      <>
+                        <p><strong>Direccion:</strong> {order.delivery_address || "-"}</p>
+                        <p>
+                          <strong>Validacion:</strong>{" "}
+                          {order.address_validation_status || "not_validated"}
+                        </p>
+                        <p>
+                          <strong>Distancia:</strong>{" "}
+                          {order.delivery_distance_km ? `${order.delivery_distance_km} km` : "-"}
+                        </p>
+                      </>
+                    )}
                   </div>
+
+                  {order.delivery_method === "delivery" && getDeliveryMapsUrl(order) && (
+                    <div className="mt-2">
+                      <p className="mb-1 text-sm text-gray-700">
+                        <strong>URL Maps:</strong>{" "}
+                        <a
+                          href={getDeliveryMapsUrl(order)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-700 underline break-all"
+                        >
+                          {getDeliveryMapsUrl(order)}
+                        </a>
+                      </p>
+                      <a
+                        href={getDeliveryMapsUrl(order)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex rounded bg-blue-600 px-3 py-1 text-sm font-semibold text-white hover:bg-blue-700"
+                      >
+                        Abrir en Google Maps
+                      </a>
+                    </div>
+                  )}
+
+                  {order.delivery_method === "delivery" && order.address_validation_message && (
+                    <p className="mt-2 text-sm text-gray-600">{order.address_validation_message}</p>
+                  )}
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <label className="text-sm font-semibold text-[var(--cce-green-dark)]" htmlFor={`status-${order.id}`}>
@@ -379,6 +478,7 @@ export default function AdminOrdersPage() {
                         STATUS_SELECT_STYLES[statusDrafts[order.id] ?? order.status]
                         || "border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)]"
                       }`}
+                      disabled={order.status === "cancelled" || deletingOrderId === order.id}
                     >
                       <option value="pending">Pendiente</option>
                       <option value="confirmed">Confirmado</option>
@@ -390,12 +490,31 @@ export default function AdminOrdersPage() {
                     <button
                       type="button"
                       onClick={() => void handleSaveStatus(order.id)}
-                      disabled={updatingOrderId === order.id || (statusDrafts[order.id] ?? order.status) === order.status}
+                      disabled={
+                        order.status === "cancelled"
+                        || deletingOrderId === order.id
+                        || updatingOrderId === order.id
+                        || (statusDrafts[order.id] ?? order.status) === order.status
+                      }
                       className="rounded bg-[var(--cce-green-dark)] px-3 py-1 text-sm font-semibold text-white disabled:opacity-50"
                     >
                       {updatingOrderId === order.id ? "Guardando..." : "Guardar estado"}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteOrder(order.id)}
+                      disabled={deletingOrderId === order.id || updatingOrderId === order.id}
+                      className="rounded bg-red-600 px-3 py-1 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {deletingOrderId === order.id ? "Borrando..." : "Borrar pedido"}
+                    </button>
                   </div>
+
+                  {order.status === "cancelled" && (
+                    <p className="mt-2 text-sm text-gray-500">
+                      Este pedido fue cancelado y su estado ya no se puede modificar.
+                    </p>
+                  )}
 
                   {expandedOrders[order.id] && (
                     <div className="mt-4 border-t pt-4">

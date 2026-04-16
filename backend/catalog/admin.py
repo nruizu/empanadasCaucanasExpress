@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Product, Order, OrderItem
+from .models import Category, Product, Order, OrderItem, DeliveryCoverageSettings
 
 
 @admin.register(Category)
@@ -28,6 +28,7 @@ class OrderAdmin(admin.ModelAdmin):
         "order_source",
         "created_by",
         "delivery_method",
+        "address_validation_status",
         "status",
         "pickup_date",
         "pickup_time",
@@ -66,7 +67,18 @@ class OrderAdmin(admin.ModelAdmin):
         ),
         (
             "Entrega a Domicilio",
-            {"fields": ("delivery_address",), "classes": ("collapse",)},
+            {
+                "fields": (
+                    "delivery_address",
+                    "delivery_latitude",
+                    "delivery_longitude",
+                    "delivery_distance_km",
+                    "address_validation_status",
+                    "address_validation_message",
+                    "delivery_maps_url",
+                ),
+                "classes": ("collapse",),
+            },
         ),
         ("Información Financiera", {"fields": ("total_amount",)}),
         (
@@ -81,3 +93,17 @@ class OrderItemAdmin(admin.ModelAdmin):
     list_display = ("order", "product", "quantity", "unit_price", "subtotal")
     list_filter = ("order__status",)
     search_fields = ("order__customer_name", "product__name")
+
+
+@admin.register(DeliveryCoverageSettings)
+class DeliveryCoverageSettingsAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "local_latitude",
+        "local_longitude",
+        "max_delivery_km",
+        "is_enabled",
+        "updated_at",
+    )
+    list_filter = ("is_enabled",)
+    search_fields = ("name", "coverage_note")

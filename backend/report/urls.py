@@ -1,6 +1,11 @@
 from django.urls import path
-from .views import MyOrderHistoryView
+from .views import CancelMyOrderView, MyOrderHistoryView
 
 urlpatterns = [
     path("orders/me/", MyOrderHistoryView.as_view(), name="api_my_order_history"),
+    path(
+        "orders/me/<int:pk>/cancel/",
+        CancelMyOrderView.as_view(),
+        name="api_my_order_cancel",
+    ),
 ]

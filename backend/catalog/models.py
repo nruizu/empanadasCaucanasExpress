@@ -68,16 +68,17 @@ class Order(models.Model):
         ("manual", "Manual"),
     ]
 
+    ADDRESS_VALIDATION_CHOICES = [
+        ("not_validated", "No validada"),
+        ("valid", "Valida"),
+        ("invalid", "Invalida"),
+        ("out_of_coverage", "Fuera de cobertura"),
+        ("service_error", "Error de servicio"),
+    ]
+
     # Información básica
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    user = models.ForeignKey(
-        "auth.User",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="orders",
-    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
     # Información del cliente
@@ -99,6 +100,31 @@ class Order(models.Model):
 
     # Dirección (si es delivery)
     delivery_address = models.TextField(blank=True, null=True)
+    delivery_latitude = models.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+    )
+    delivery_longitude = models.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+    )
+    delivery_distance_km = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        blank=True,
+        null=True,
+    )
+    address_validation_status = models.CharField(
+        max_length=20,
+        choices=ADDRESS_VALIDATION_CHOICES,
+        default="not_validated",
+    )
+    address_validation_message = models.CharField(max_length=255, blank=True)
+    delivery_maps_url = models.URLField(max_length=500, blank=True)
 
     # Notas adicionales
     notes = models.TextField(blank=True, null=True)
@@ -118,6 +144,13 @@ class Order(models.Model):
         null=True,
         blank=True,
         related_name="created_orders",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="orders",
     )
 
     class Meta:
@@ -162,6 +195,58 @@ class Order(models.Model):
         if self.delivery_method == "pickup":
             if not self.pickup_date or not self.pickup_time:
                 raise ValidationError("Debe especificar fecha y hora de recogida")
+
+
+class DeliveryCoverageSettings(models.Model):
+    """Configuracion de cobertura para entregas a domicilio."""
+
+    name = models.CharField(max_length=120, default="Cobertura principal")
+    local_address = models.CharField(max_length=255)
+    local_city = models.CharField(max_length=120)
+    local_region = models.CharField(max_length=120, blank=True)
+    local_country = models.CharField(max_length=120, default="Colombia")
+    local_reference = models.CharField(max_length=255, blank=True)
+    local_latitude = models.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+    )
+    local_longitude = models.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+    )
+    max_delivery_km = models.DecimalField(max_digits=6, decimal_places=2)
+    is_enabled = models.BooleanField(default=True)
+    coverage_note = models.CharField(max_length=255, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuracion de cobertura"
+        verbose_name_plural = "Configuracion de cobertura"
+
+    def __str__(self):
+        status = "Activa" if self.is_enabled else "Inactiva"
+        return f"{self.name} ({status})"
+
+    def clean(self):
+        super().clean()
+        if not self.local_address or not self.local_address.strip():
+            raise ValidationError("Debes ingresar la direccion del local")
+
+        if not self.local_city or not self.local_city.strip():
+            raise ValidationError("Debes ingresar la ciudad o pueblo del local")
+
+        if self.max_delivery_km <= 0:
+            raise ValidationError("El limite de cobertura debe ser mayor a 0")
+
+        if self.local_latitude is not None and not (-90 <= float(self.local_latitude) <= 90):
+            raise ValidationError("La latitud del local debe estar entre -90 y 90")
+
+        if self.local_longitude is not None and not (-180 <= float(self.local_longitude) <= 180):
+            raise ValidationError("La longitud del local debe estar entre -180 y 180")
 
 
 class OrderItem(models.Model):

@@ -22,6 +22,12 @@ export interface OrderHistoryItem {
   pickup_time: string | null;
   scheduled_date: string | null;
   delivery_address: string | null;
+  delivery_latitude?: string | null;
+  delivery_longitude?: string | null;
+  delivery_distance_km?: string | null;
+  address_validation_status?: "not_validated" | "valid" | "invalid" | "out_of_coverage" | "service_error";
+  address_validation_message?: string;
+  delivery_maps_url?: string;
   notes: string | null;
   total_amount: string;
   created_at: string;
@@ -167,4 +173,21 @@ export async function myOrderHistory(token: string) {
   }) as Promise<PaginatedResponse<OrderHistoryItem>>;
 }
 
-export default { register, login, logout, me, updateMe, myOrderHistory };
+export async function cancelMyOrder(token: string, orderId: number) {
+  return request(`/report/orders/me/${orderId}/cancel/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Token ${token}`,
+    },
+  }) as Promise<OrderHistoryItem>;
+}
+
+export default {
+  register,
+  login,
+  logout,
+  me,
+  updateMe,
+  myOrderHistory,
+  cancelMyOrder,
+};

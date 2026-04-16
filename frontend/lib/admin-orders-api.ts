@@ -80,3 +80,20 @@ export async function updateAdminOrderStatus(
 
   return (await response.json()) as OrderHistoryItem;
 }
+
+export async function deleteAdminOrder(orderId: number) {
+  const token = getToken();
+
+  const response = await fetch(`${API_BASE_URL}/orders/${orderId}/`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Token ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const message = body.detail || body.error || "No se pudo borrar el pedido";
+    throw new AdminOrdersApiError(message, response.status);
+  }
+}
