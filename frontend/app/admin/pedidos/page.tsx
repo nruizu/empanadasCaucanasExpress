@@ -77,6 +77,7 @@ export default function AdminOrdersPage() {
   const { token, authReady, user } = useAuth();
 
   const [orders, setOrders] = useState<OrderHistoryItem[]>([]);
+  const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrevious, setHasPrevious] = useState(false);
@@ -131,6 +132,7 @@ export default function AdminOrdersPage() {
       });
 
       setOrders(data.results || []);
+      setCount(Number(data.count || 0));
       setStatusDrafts(
         (data.results || []).reduce(
           (
