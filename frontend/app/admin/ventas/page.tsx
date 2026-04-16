@@ -55,7 +55,7 @@ const toPayload = (form: ManualSaleFormState): ManualSalePayload => ({
 
 export default function AdminSalesPage() {
   const router = useRouter();
-  const { token, user } = useAuth();
+  const { token, authReady, user } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [history, setHistory] = useState<SalesOrder[]>([]);
@@ -104,6 +104,10 @@ export default function AdminSalesPage() {
   }, [filters]);
 
   useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
     if (!token) {
       router.replace("/login");
       return;
@@ -117,7 +121,7 @@ export default function AdminSalesPage() {
     if (canAccess) {
       void loadData();
     }
-  }, [token, user, canAccess, loadData, router]);
+  }, [token, authReady, user, canAccess, loadData, router]);
 
   const updateForm = (field: keyof ManualSaleFormState, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));

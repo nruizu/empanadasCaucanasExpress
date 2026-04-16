@@ -1,5 +1,15 @@
 from django.shortcuts import get_object_or_404
-from django.db.models import Avg, Case, Count, DateField, DecimalField, Sum, Value, When
+from django.db.models import (
+    Avg,
+    Case,
+    Count,
+    DateField,
+    DecimalField,
+    Q,
+    Sum,
+    Value,
+    When,
+)
 from django.db.models.functions import Coalesce, TruncDate
 from rest_framework import filters, generics
 from rest_framework.pagination import PageNumberPagination
@@ -138,7 +148,12 @@ class OrderListCreateView(generics.ListCreateAPIView):
 
         today = self.request.query_params.get("today")
         if today and today.lower() in {"1", "true", "yes", "si"}:
-            queryset = queryset.filter(created_at__date=timezone.localdate())
+            today_date = timezone.localdate()
+            queryset = queryset.filter(
+                Q(delivery_method="pickup", pickup_date=today_date)
+                | Q(delivery_method="scheduled", scheduled_date=today_date)
+                | Q(delivery_method="delivery", created_at__date=today_date)
+            )
 
         return queryset
 

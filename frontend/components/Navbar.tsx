@@ -199,6 +199,13 @@ export default function Navbar() {
                   >
                     Historial de ventas
                   </Link>
+                  <Link
+                    href="/admin/reporte-ventas"
+                    onClick={() => setOpen(false)}
+                    className="text-lg font-semibold cursor-pointer hover:opacity-80"
+                  >
+                    Reporte de ventas
+                  </Link>
                 </div>
               </div>
             </div>
