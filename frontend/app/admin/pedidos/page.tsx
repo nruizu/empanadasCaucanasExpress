@@ -77,7 +77,6 @@ export default function AdminOrdersPage() {
   const { token, authReady, user } = useAuth();
 
   const [orders, setOrders] = useState<OrderHistoryItem[]>([]);
-  const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrevious, setHasPrevious] = useState(false);
@@ -132,7 +131,6 @@ export default function AdminOrdersPage() {
       });
 
       setOrders(data.results || []);
-      setCount(Number(data.count || 0));
       setStatusDrafts(
         (data.results || []).reduce(
           (
@@ -171,16 +169,6 @@ export default function AdminOrdersPage() {
 
     void loadOrders();
   }, [token, authReady, user, router, loadOrders]);
-
-  const totalRevenue = useMemo(
-    () =>
-      orders.reduce(
-        (acc: number, order: OrderHistoryItem) =>
-          acc + Number(order.total_amount || 0),
-        0,
-      ),
-    [orders],
-  );
 
   const handleSaveStatus = async (orderId: number) => {
     const nextStatus = statusDrafts[orderId];
@@ -251,7 +239,6 @@ export default function AdminOrdersPage() {
         delete next[orderId];
         return next;
       });
-      setCount((current) => Math.max(0, current - 1));
       setSuccess(`Pedido ${orderId} eliminado correctamente.`);
     } catch (error: unknown) {
       setError(getErrorMessage(error, "No se pudo borrar el pedido"));
@@ -305,23 +292,7 @@ export default function AdminOrdersPage() {
             y revisar detalles.
           </p>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-4">
-            <div className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_15%,white)] p-4">
-              <p className="text-sm text-[var(--cce-text-muted)]">
-                Total pedidos
-              </p>
-              <p className="text-2xl font-bold text-[var(--cce-green-dark)]">
-                {count}
-              </p>
-            </div>
-            <div className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_15%,white)] p-4">
-              <p className="text-sm text-[var(--cce-text-muted)]">
-                Ingreso pagina actual
-              </p>
-              <p className="text-2xl font-bold text-[var(--cce-green-dark)]">
-                ${totalRevenue.toFixed(0)}
-              </p>
-            </div>
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_15%,white)] p-4">
               <p className="text-sm text-[var(--cce-text-muted)]">
                 Pedidos de hoy

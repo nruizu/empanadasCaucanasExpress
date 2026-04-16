@@ -7,6 +7,24 @@ interface CategoryCardProps {
   onSelect: (slug: string) => void;
 }
 
+function normalizeImageSrc(raw: string | undefined | null) {
+  const value = (raw ?? "").trim();
+  if (!value) {
+    return "/default.jpg";
+  }
+
+  if (
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("data:") ||
+    value.startsWith("blob:")
+  ) {
+    return value;
+  }
+
+  return value.startsWith("/") ? value : `/${value}`;
+}
+
 export default function CategoryCard({
   category,
   selected = false,
@@ -15,11 +33,15 @@ export default function CategoryCard({
   const CATEGORY_IMAGES: Record<string, string> = {
     entradas: "/entradas.jpeg",
     desayunos: "/desayuno.jpeg",
-    comidas: "comidas.jpeg",
-    "bebidas-calientes": "bebidaCaliente.jpg",
-    "bebidas-frias": "bebidas_frias.jpg",
+    comidas: "/comidas.jpeg",
+    "bebidas-calientes": "/bebidaCaliente.jpg",
+    "bebidas-frias": "/bebidas_frias.jpg",
     "para-llevar": "/para-llevar.jpeg",
   };
+
+  const imageSrc = normalizeImageSrc(
+    category.image || CATEGORY_IMAGES[category.slug] || "/default.jpg",
+  );
 
   return (
     <button
@@ -31,7 +53,7 @@ export default function CategoryCard({
       aria-pressed={selected}
     >
       <Image
-        src={category.image || CATEGORY_IMAGES[category.slug] || "/default.jpg"}
+        src={imageSrc}
         alt={category.name}
         width={640}
         height={256}
