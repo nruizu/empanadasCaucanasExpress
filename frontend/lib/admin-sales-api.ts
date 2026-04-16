@@ -86,7 +86,9 @@ export const getSalesMetrics = (filters?: SalesHistoryFilters) =>
   request<SalesMetrics>(`/admin/sales/metrics/${buildQuery(filters)}`);
 
 export const getSalesAnalysis = (filters?: SalesAnalysisFilters) =>
-  request<SalesAnalysisResponse>(`/report/admin/sales/analysis/${buildQuery(filters)}`);
+  request<SalesAnalysisResponse>(
+    `/report/admin/sales/analysis/${buildQuery(filters)}`,
+  );
 
 export const registerManualSale = (payload: ManualSalePayload) =>
   request<SalesOrder>("/admin/sales/register/", {

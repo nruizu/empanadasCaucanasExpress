@@ -9,13 +9,19 @@ import type {
   SalesAnalysisResponse,
 } from "@/types/sales";
 
-const GROUP_BY_OPTIONS: Array<{ value: NonNullable<SalesAnalysisFilters["group_by"]>; label: string }> = [
+const GROUP_BY_OPTIONS: Array<{
+  value: NonNullable<SalesAnalysisFilters["group_by"]>;
+  label: string;
+}> = [
   { value: "weekday", label: "Día de la semana" },
   { value: "week", label: "Semana" },
   { value: "month", label: "Mes" },
 ];
 
-const RANGE_OPTIONS: Array<{ value: NonNullable<SalesAnalysisFilters["range"]>; label: string }> = [
+const RANGE_OPTIONS: Array<{
+  value: NonNullable<SalesAnalysisFilters["range"]>;
+  label: string;
+}> = [
   { value: "last_week", label: "Última semana" },
   { value: "last_month", label: "Último mes" },
   { value: "last_year", label: "Último año" },
@@ -40,7 +46,10 @@ export default function AdminSalesReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const canAccess = useMemo(() => Boolean(token && user?.is_staff), [token, user]);
+  const canAccess = useMemo(
+    () => Boolean(token && user?.is_staff),
+    [token, user],
+  );
 
   const loadAnalysis = useCallback(async () => {
     if (!canAccess) return;
@@ -93,9 +102,12 @@ export default function AdminSalesReportPage() {
     <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-8 md:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <section className="rounded-xl bg-white p-6 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-          <h1 className="text-2xl font-bold text-[var(--cce-green-dark)]">Reporte de ventas</h1>
+          <h1 className="text-2xl font-bold text-[var(--cce-green-dark)]">
+            Reporte de ventas
+          </h1>
           <p className="mt-1 text-sm text-[var(--cce-text-muted)]">
-            Analiza ingresos por periodo, ranking de productos y ventas por categoría.
+            Analiza ingresos por periodo, ranking de productos y ventas por
+            categoría.
           </p>
 
           <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -104,7 +116,8 @@ export default function AdminSalesReportPage() {
               onChange={(event) =>
                 setFilters((current) => ({
                   ...current,
-                  group_by: event.target.value as SalesAnalysisFilters["group_by"],
+                  group_by: event.target
+                    .value as SalesAnalysisFilters["group_by"],
                 }))
               }
               className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2"
@@ -149,17 +162,27 @@ export default function AdminSalesReportPage() {
           <>
             <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="rounded-xl bg-white p-5 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-                <p className="text-sm text-[var(--cce-text-muted)]">Órdenes analizadas</p>
-                <p className="mt-1 text-2xl font-bold text-[var(--cce-green-dark)]">{analysis.summary.total_orders}</p>
+                <p className="text-sm text-[var(--cce-text-muted)]">
+                  Órdenes analizadas
+                </p>
+                <p className="mt-1 text-2xl font-bold text-[var(--cce-green-dark)]">
+                  {analysis.summary.total_orders}
+                </p>
               </div>
               <div className="rounded-xl bg-white p-5 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-                <p className="text-sm text-[var(--cce-text-muted)]">Ingreso total analizado</p>
-                <p className="mt-1 text-2xl font-bold text-[var(--cce-green-dark)]">{CURRENCY.format(analysis.summary.total_sold)}</p>
+                <p className="text-sm text-[var(--cce-text-muted)]">
+                  Ingreso total analizado
+                </p>
+                <p className="mt-1 text-2xl font-bold text-[var(--cce-green-dark)]">
+                  {CURRENCY.format(analysis.summary.total_sold)}
+                </p>
               </div>
             </section>
 
             <section className="rounded-xl bg-white p-6 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-              <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">Ventas por periodo</h2>
+              <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">
+                Ventas por periodo
+              </h2>
               <p className="mt-1 text-sm text-[var(--cce-text-muted)]">
                 Visualiza la distribución de ingresos por día, semana o mes.
               </p>
@@ -172,10 +195,14 @@ export default function AdminSalesReportPage() {
             </section>
 
             <section className="rounded-xl bg-white p-6 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-              <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">Top 6 productos más vendidos</h2>
+              <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">
+                Top 6 productos más vendidos
+              </h2>
 
               {analysis.top_products.length === 0 ? (
-                <p className="mt-3 text-sm text-[var(--cce-text-muted)]">No hay productos vendidos en el rango seleccionado.</p>
+                <p className="mt-3 text-sm text-[var(--cce-text-muted)]">
+                  No hay productos vendidos en el rango seleccionado.
+                </p>
               ) : (
                 <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                   {analysis.top_products.map((item, index) => (
@@ -183,11 +210,22 @@ export default function AdminSalesReportPage() {
                       key={item.product_id}
                       className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_15%,white)] p-4"
                     >
-                      <p className="text-xs font-semibold uppercase text-[var(--cce-text-muted)]">#{index + 1}</p>
-                      <h3 className="mt-1 font-semibold text-[var(--cce-green-dark)]">{item.name}</h3>
-                      <p className="mt-1 text-sm text-[var(--cce-text-muted)]">Categoría: {item.category || "Sin categoría"}</p>
-                      <p className="mt-2 text-sm">Unidades: <strong>{item.total_quantity}</strong></p>
-                      <p className="text-sm">Ingresos: <strong>{CURRENCY.format(item.total_sold)}</strong></p>
+                      <p className="text-xs font-semibold uppercase text-[var(--cce-text-muted)]">
+                        #{index + 1}
+                      </p>
+                      <h3 className="mt-1 font-semibold text-[var(--cce-green-dark)]">
+                        {item.name}
+                      </h3>
+                      <p className="mt-1 text-sm text-[var(--cce-text-muted)]">
+                        Categoría: {item.category || "Sin categoría"}
+                      </p>
+                      <p className="mt-2 text-sm">
+                        Unidades: <strong>{item.total_quantity}</strong>
+                      </p>
+                      <p className="text-sm">
+                        Ingresos:{" "}
+                        <strong>{CURRENCY.format(item.total_sold)}</strong>
+                      </p>
                     </article>
                   ))}
                 </div>
@@ -195,7 +233,9 @@ export default function AdminSalesReportPage() {
             </section>
 
             <section className="rounded-xl bg-white p-6 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-              <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">Ventas por categoría</h2>
+              <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">
+                Ventas por categoría
+              </h2>
 
               <img
                 src={analysis.category_chart_image}
@@ -215,10 +255,15 @@ export default function AdminSalesReportPage() {
                     </thead>
                     <tbody>
                       {analysis.category_sales.map((row) => (
-                        <tr key={row.category} className="border-b border-[color-mix(in_srgb,var(--cce-green-dark)_10%,white)]">
+                        <tr
+                          key={row.category}
+                          className="border-b border-[color-mix(in_srgb,var(--cce-green-dark)_10%,white)]"
+                        >
                           <td className="py-2 pr-4">{row.category}</td>
                           <td className="py-2 pr-4">{row.total_quantity}</td>
-                          <td className="py-2 pr-4">{CURRENCY.format(row.total_sold)}</td>
+                          <td className="py-2 pr-4">
+                            {CURRENCY.format(row.total_sold)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
