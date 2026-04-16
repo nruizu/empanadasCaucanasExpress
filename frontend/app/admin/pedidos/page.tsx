@@ -172,16 +172,6 @@ export default function AdminOrdersPage() {
     void loadOrders();
   }, [token, authReady, user, router, loadOrders]);
 
-  const totalRevenue = useMemo(
-    () =>
-      orders.reduce(
-        (acc: number, order: OrderHistoryItem) =>
-          acc + Number(order.total_amount || 0),
-        0,
-      ),
-    [orders],
-  );
-
   const handleSaveStatus = async (orderId: number) => {
     const nextStatus = statusDrafts[orderId];
     const order = orders.find((item: OrderHistoryItem) => item.id === orderId);
@@ -260,24 +250,6 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const todayOrders = useMemo(() => {
-    const today = new Date();
-    const todayDate = today.toISOString().slice(0, 10);
-
-    return orders.filter((order: OrderHistoryItem) => {
-      const serviceDate =
-        order.delivery_method === "pickup"
-          ? order.pickup_date
-          : order.delivery_method === "scheduled"
-            ? order.scheduled_date
-            : order.created_at;
-
-      return (
-        Boolean(serviceDate) && String(serviceDate).slice(0, 10) === todayDate
-      );
-    }).length;
-  }, [orders]);
-
   const pendingOrders = useMemo(
     () =>
       orders.filter((order: OrderHistoryItem) => order.status === "pending")
@@ -307,29 +279,13 @@ export default function AdminOrdersPage() {
             y revisar detalles.
           </p>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_15%,white)] p-4">
               <p className="text-sm text-[var(--cce-text-muted)]">
                 Total pedidos
               </p>
               <p className="text-2xl font-bold text-[var(--cce-green-dark)]">
                 {count}
-              </p>
-            </div>
-            <div className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_15%,white)] p-4">
-              <p className="text-sm text-[var(--cce-text-muted)]">
-                Ingreso pagina actual
-              </p>
-              <p className="text-2xl font-bold text-[var(--cce-green-dark)]">
-                ${totalRevenue.toFixed(0)}
-              </p>
-            </div>
-            <div className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_15%,white)] p-4">
-              <p className="text-sm text-[var(--cce-text-muted)]">
-                Pedidos de hoy
-              </p>
-              <p className="text-2xl font-bold text-[var(--cce-green-dark)]">
-                {todayOrders}
               </p>
             </div>
             <div className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_15%,white)] p-4">
@@ -556,17 +512,6 @@ export default function AdminOrdersPage() {
                   {order.delivery_method === "delivery" &&
                     getDeliveryMapsUrl(order) && (
                       <div className="mt-2">
-                        <p className="mb-1 text-sm text-gray-700">
-                          <strong>URL Maps:</strong>{" "}
-                          <a
-                            href={getDeliveryMapsUrl(order)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-700 underline break-all"
-                          >
-                            {getDeliveryMapsUrl(order)}
-                          </a>
-                        </p>
                         <a
                           href={getDeliveryMapsUrl(order)}
                           target="_blank"

@@ -274,3 +274,69 @@ class OrderItem(models.Model):
     def subtotal(self):
         """Calcula el subtotal del item"""
         return self.quantity * self.unit_price
+
+
+class OrderNotification(models.Model):
+    """
+    Registro de notificaciones enviadas a clientes.
+    Rastrea todos los intentos de notificación por WhatsApp/Twilio.
+    """
+
+    NOTIFICATION_TYPE_CHOICES = [
+        ("confirmation", "Confirmación de pedido"),
+        ("status_update", "Actualización de estado"),
+        ("delivery_reminder", "Recordatorio de entrega"),
+    ]
+
+    STATUS_CHOICES = [
+        ("pending", "Pendiente"),
+        ("sent", "Enviado"),
+        ("failed", "Fallido"),
+        ("skipped", "Omitido (no aplica)"),
+    ]
+
+    # Relación con la orden
+    order = models.ForeignKey(
+        Order,
+        related_name="notifications",
+        on_delete=models.CASCADE,
+    )
+
+    # Información de notificación
+    notification_type = models.CharField(
+        max_length=20,
+        choices=NOTIFICATION_TYPE_CHOICES,
+        default="confirmation",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+
+    # Detalles técnicos
+    phone_number = models.CharField(max_length=20)
+    twilio_message_sid = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="ID del mensaje en Twilio",
+    )
+    error_message = models.TextField(blank=True, null=True)
+
+    # Auditoría
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Notificación de Pedido"
+        verbose_name_plural = "Notificaciones de Pedido"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["-created_at"]),
+            models.Index(fields=["order", "status"]),
+        ]
+
+    def __str__(self):
+        return f"Notificación {self.notification_type} - Pedido {self.order.id} ({self.status})"

@@ -10,6 +10,9 @@ type AccountErrorPayload = {
   full_name?: string[];
   phone?: string[];
   address?: string[];
+  delivery_local_address?: string[];
+  delivery_city?: string[];
+  delivery_region?: string[];
   message?: string;
 };
 
@@ -21,6 +24,9 @@ const getAccountErrorMessage = (err: unknown) => {
       typed.full_name?.[0] ||
       typed.phone?.[0] ||
       typed.address?.[0] ||
+      typed.delivery_local_address?.[0] ||
+      typed.delivery_city?.[0] ||
+      typed.delivery_region?.[0] ||
       typed.message ||
       "No se pudo actualizar la cuenta"
     );
@@ -36,6 +42,9 @@ interface AccountFormData {
   full_name: string;
   phone: string;
   address: string;
+  delivery_local_address: string;
+  delivery_city: string;
+  delivery_region: string;
 }
 
 export default function CuentaPage() {
@@ -51,6 +60,9 @@ export default function CuentaPage() {
     full_name: "",
     phone: "",
     address: "",
+    delivery_local_address: "",
+    delivery_city: "",
+    delivery_region: "",
   });
 
   useEffect(() => {
@@ -70,6 +82,9 @@ export default function CuentaPage() {
           full_name: data.full_name || "",
           phone: data.phone || "",
           address: data.address || "",
+          delivery_local_address: data.delivery_local_address || "",
+          delivery_city: data.delivery_city || "",
+          delivery_region: data.delivery_region || "",
         });
       } catch {
         if (cancelled) return;
@@ -189,6 +204,54 @@ export default function CuentaPage() {
               required
               className="w-full border p-2 rounded"
             />
+          </div>
+
+          <hr className="my-6" />
+
+          <h2 className="text-lg font-semibold">Información para entregas a domicilio</h2>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Dirección de entrega
+            </label>
+            <input
+              type="text"
+              name="delivery_local_address"
+              value={formData.delivery_local_address}
+              onChange={handleChange}
+              className="w-full border p-2 rounded"
+              placeholder="Ej: Calle 20B #80-15"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Ciudad o pueblo
+              </label>
+              <input
+                type="text"
+                name="delivery_city"
+                value={formData.delivery_city}
+                onChange={handleChange}
+                className="w-full border p-2 rounded"
+                placeholder="Ej: Medellin"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Departamento/región
+              </label>
+              <input
+                type="text"
+                name="delivery_region"
+                value={formData.delivery_region}
+                onChange={handleChange}
+                className="w-full border p-2 rounded"
+                placeholder="Ej: Antioquia"
+              />
+            </div>
           </div>
 
           <button

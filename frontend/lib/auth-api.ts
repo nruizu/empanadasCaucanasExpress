@@ -9,6 +9,9 @@ export interface MeResponse {
   full_name: string;
   phone: string;
   address: string;
+  delivery_local_address?: string;
+  delivery_city?: string;
+  delivery_region?: string;
 }
 
 export interface OrderHistoryItem {
@@ -164,6 +167,9 @@ export async function updateMe(
     full_name?: string;
     phone?: string;
     address?: string;
+    delivery_local_address?: string;
+    delivery_city?: string;
+    delivery_region?: string;
   },
 ) {
   return request("/auth/me/", {
