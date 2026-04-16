@@ -165,11 +165,11 @@ class SalesAnalysisView(APIView):
     def get(self, request):
         group_by = request.query_params.get("group_by", "weekday")
         if group_by not in {"weekday", "week", "month"}:
-            return Response({"detail": "group_by invalido."}, status=400)
+            return Response({"detail": "group_by inválido."}, status=400)
 
         range_key = request.query_params.get("range", "last_week")
         if range_key not in {"last_week", "last_month", "last_year", "all"}:
-            return Response({"detail": "range invalido."}, status=400)
+            return Response({"detail": "range inválido."}, status=400)
 
         base_queryset = Order.objects.exclude(status="cancelled").prefetch_related(
             "items__product__category"
