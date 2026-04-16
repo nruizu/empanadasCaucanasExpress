@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 
 import AddToCartButton from "@/components/catalog/AddToCartButton";
@@ -18,6 +17,33 @@ const formatPrice = (price: string) =>
     maximumFractionDigits: 0,
   }).format(Number(price));
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+
+function resolveProductImageSrc(rawSrc: string | null | undefined): string {
+  if (!rawSrc) {
+    return "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (rawSrc.startsWith("http://") || rawSrc.startsWith("https://")) {
+    return rawSrc;
+  }
+
+  if (rawSrc.startsWith("/media/")) {
+    return `${API_ORIGIN}${rawSrc}`;
+  }
+
+  if (rawSrc.startsWith("media/")) {
+    return `${API_ORIGIN}/${rawSrc}`;
+  }
+
+  if (rawSrc.startsWith("/")) {
+    return rawSrc;
+  }
+
+  return `/${rawSrc}`;
+}
+
 export default function ProductCard({
   product,
   onAddToCart,
@@ -33,16 +59,13 @@ export default function ProductCard({
     [product.variants, selectedVariantId],
   );
 
+  const imageSrc = resolveProductImageSrc(selectedVariant.image);
+
   return (
     <article className="overflow-hidden rounded-2xl bg-white shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-      <Image
-        src={
-          selectedVariant.image ||
-          "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=1200&q=80"
-        }
+      <img
+        src={imageSrc}
         alt={product.name}
-        width={1200}
-        height={768}
         className="h-48 w-full object-cover"
       />
       <div className="flex min-h-44 flex-col justify-between p-4">

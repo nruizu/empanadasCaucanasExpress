@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { Category } from "@/types/catalog";
 
 interface CategoryCardProps {
@@ -15,11 +14,20 @@ export default function CategoryCard({
   const CATEGORY_IMAGES: Record<string, string> = {
     entradas: "/entradas.jpeg",
     desayunos: "/desayuno.jpeg",
-    comidas: "comidas.jpeg",
-    "bebidas-calientes": "bebidaCaliente.jpg",
-    "bebidas-frias": "bebidas_frias.jpg",
+    comidas: "/comidas.jpeg",
+    "bebidas-calientes": "/bebidaCaliente.jpg",
+    "bebidas-frias": "/bebidas_frias.jpg",
     "para-llevar": "/para-llevar.jpeg",
   };
+
+  const rawImageSrc =
+    category.image || CATEGORY_IMAGES[category.slug] || "/default.jpg";
+  const imageSrc =
+    rawImageSrc.startsWith("http://") ||
+    rawImageSrc.startsWith("https://") ||
+    rawImageSrc.startsWith("/")
+      ? rawImageSrc
+      : `/${rawImageSrc}`;
 
   return (
     <button
@@ -30,11 +38,9 @@ export default function CategoryCard({
       }`}
       aria-pressed={selected}
     >
-      <Image
-        src={category.image || CATEGORY_IMAGES[category.slug] || "/default.jpg"}
+      <img
+        src={imageSrc}
         alt={category.name}
-        width={640}
-        height={256}
         className="h-32 w-full object-cover"
       />
       <div className="p-3">
