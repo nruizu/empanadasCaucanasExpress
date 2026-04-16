@@ -45,7 +45,7 @@ const toPayload = (form: ProductFormState): ProductAdminPayload => ({
 
 export default function AdminCatalogPage() {
   const router = useRouter();
-  const { token, user } = useAuth();
+  const { token, authReady, user } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -86,6 +86,10 @@ export default function AdminCatalogPage() {
   }, []);
 
   useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
     if (!token) {
       router.replace("/login");
       return;
@@ -99,7 +103,7 @@ export default function AdminCatalogPage() {
     if (canAccess) {
       void loadData();
     }
-  }, [token, user, canAccess, loadData, router]);
+  }, [token, authReady, user, canAccess, loadData, router]);
 
   const handleFieldChange = (
     field: keyof ProductFormState,

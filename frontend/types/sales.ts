@@ -80,3 +80,44 @@ export interface ManualSalePayload {
   notes?: string;
   items: ManualSaleItemInput[];
 }
+
+export interface SalesAnalysisFilters {
+  group_by?: "weekday" | "week" | "month";
+  range?: "last_week" | "last_month" | "last_year" | "all";
+}
+
+export interface SalesSeriesPoint {
+  label: string;
+  total_sold: number;
+  total_orders: number;
+}
+
+export interface TopProductAnalysisItem {
+  product_id: number;
+  name: string;
+  category: string | null;
+  total_quantity: number;
+  total_sold: number;
+}
+
+export interface CategorySalesAnalysisItem {
+  category: string;
+  total_quantity: number;
+  total_sold: number;
+}
+
+export interface SalesAnalysisResponse {
+  filters: {
+    group_by: "weekday" | "week" | "month";
+    range: "last_week" | "last_month" | "last_year" | "all";
+  };
+  summary: {
+    total_orders: number;
+    total_sold: number;
+  };
+  sales_series: SalesSeriesPoint[];
+  sales_chart_image: string;
+  top_products: TopProductAnalysisItem[];
+  category_sales: CategorySalesAnalysisItem[];
+  category_chart_image: string;
+}

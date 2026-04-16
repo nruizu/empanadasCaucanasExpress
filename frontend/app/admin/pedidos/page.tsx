@@ -74,10 +74,9 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export default function AdminOrdersPage() {
   const router = useRouter();
-  const { token, user } = useAuth();
+  const { token, authReady, user } = useAuth();
 
   const [orders, setOrders] = useState<OrderHistoryItem[]>([]);
-  const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrevious, setHasPrevious] = useState(false);
@@ -144,7 +143,6 @@ export default function AdminOrdersPage() {
           {},
         ),
       );
-      setCount(data.count || 0);
       setHasNext(Boolean(data.next));
       setHasPrevious(Boolean(data.previous));
     } catch (error: unknown) {
@@ -155,6 +153,10 @@ export default function AdminOrdersPage() {
   }, [canAccess, page, deliveryMethod, status, ordering, todayOnly, search]);
 
   useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
     if (!token) {
       router.replace("/login");
       return;
@@ -166,7 +168,7 @@ export default function AdminOrdersPage() {
     }
 
     void loadOrders();
-  }, [token, user, router, loadOrders]);
+  }, [token, authReady, user, router, loadOrders]);
 
   const totalRevenue = useMemo(
     () =>
@@ -259,10 +261,17 @@ export default function AdminOrdersPage() {
   const todayOrders = useMemo(() => {
     const today = new Date();
     const todayDate = today.toISOString().slice(0, 10);
-    return orders.filter(
-      (order: OrderHistoryItem) =>
-        String(order.created_at).slice(0, 10) === todayDate,
-    ).length;
+
+    return orders.filter((order: OrderHistoryItem) => {
+      const serviceDate =
+        order.delivery_method === "pickup"
+          ? order.pickup_date
+          : order.delivery_method === "scheduled"
+            ? order.scheduled_date
+            : order.created_at;
+
+      return Boolean(serviceDate) && String(serviceDate).slice(0, 10) === todayDate;
+    }).length;
   }, [orders]);
 
   const pendingOrders = useMemo(
@@ -272,7 +281,7 @@ export default function AdminOrdersPage() {
     [orders],
   );
 
-  if (!token || !canAccess) {
+  if (!authReady || !token || !canAccess) {
     return (
       <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-8 md:px-8">
         <div className="mx-auto max-w-6xl rounded-xl bg-white p-6 text-center text-[var(--cce-text-muted)] shadow-[0_8px_30px_rgba(31,77,58,0.09)]">

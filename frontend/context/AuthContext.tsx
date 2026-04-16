@@ -13,6 +13,7 @@ const TOKEN_KEY = "cce_token";
 
 interface AuthContextType {
   token: string | null;
+  authReady: boolean;
   user: { id: number; username: string; is_staff: boolean } | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -36,12 +37,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return localStorage.getItem(TOKEN_KEY);
   });
+  const [authReady] = useState<boolean>(() => typeof window !== "undefined");
   const [user, setUser] = useState<{
     id: number;
     username: string;
     is_staff: boolean;
   } | null>(null);
-
   const saveToken = useCallback((t: string | null) => {
     setToken(t);
     if (t) {
@@ -133,7 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, register }}>
+    <AuthContext.Provider
+      value={{ token, authReady, user, login, logout, register }}
+    >
       {children}
     </AuthContext.Provider>
   );
