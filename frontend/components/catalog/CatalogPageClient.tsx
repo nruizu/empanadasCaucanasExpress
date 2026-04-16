@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import CartConfirmModal from "@/components/cart/CartConfirmModal";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -195,7 +196,7 @@ export default function CatalogPageClient() {
 
   useEffect(() => {
     void loadAllProducts();
-  }, [page, ordering, search]);
+  }, [loadAllProducts]);
 
   const router = useRouter();
   const { token } = useAuth();
@@ -253,10 +254,12 @@ export default function CatalogPageClient() {
   return (
     <main className="min-h-screen bg-[var(--cce-beige)] pb-14">
       <section className="relative h-[340px] overflow-hidden">
-        <img
+        <Image
           src="/Local_sede.jpeg"
           alt="Empanadas tradicionales"
-          className="h-full w-full object-cover"
+          fill
+          priority
+          className="object-cover"
         />
         <div className="absolute inset-0 bg-black/55" />
         <div className="absolute inset-0 mx-auto flex max-w-6xl flex-col justify-center px-4 text-white md:px-8">

@@ -4,10 +4,11 @@ import io
 import matplotlib
 import numpy as np
 import seaborn as sns
+from django.shortcuts import get_object_or_404
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -30,6 +31,36 @@ class MyOrderHistoryView(generics.ListAPIView):
         )
 
 
+class CancelMyOrderView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, pk: int):
+        order = get_object_or_404(Order, pk=pk, user=request.user)
+
+        if order.status in {"cancelled", "completed"}:
+            return Response(
+                {"detail": "Este pedido ya no se puede cancelar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cancel_deadline = order.created_at + timedelta(minutes=5)
+        if timezone.now() > cancel_deadline:
+            return Response(
+                {
+                    "detail": (
+                        "Solo puedes cancelar pedidos durante los primeros 5 minutos."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        order.status = "cancelled"
+        order.save(update_fields=["status", "updated_at"])
+
+        serializer = OrderSerializer(order)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 def _date_range_start(range_key):
     if range_key == "last_month":
         return timezone.now() - timedelta(days=30)
@@ -46,10 +77,10 @@ def _build_sales_series(orders, group_by):
             weekday_labels = [
                 "Lunes",
                 "Martes",
-                "Miercoles",
+                "Miércoles",
                 "Jueves",
                 "Viernes",
-                "Sabado",
+                "Sábado",
                 "Domingo",
             ]
             return [
@@ -70,10 +101,10 @@ def _build_sales_series(orders, group_by):
         weekday_labels = [
             "Lunes",
             "Martes",
-            "Miercoles",
+            "Miércoles",
             "Jueves",
             "Viernes",
-            "Sabado",
+            "Sábado",
             "Domingo",
         ]
         indices = np.array([order.created_at.weekday() for order in orders], dtype=int)
@@ -134,11 +165,11 @@ class SalesAnalysisView(APIView):
     def get(self, request):
         group_by = request.query_params.get("group_by", "weekday")
         if group_by not in {"weekday", "week", "month"}:
-            return Response({"detail": "group_by invalido."}, status=400)
+            return Response({"detail": "group_by inválido."}, status=400)
 
         range_key = request.query_params.get("range", "last_week")
         if range_key not in {"last_week", "last_month", "last_year", "all"}:
-            return Response({"detail": "range invalido."}, status=400)
+            return Response({"detail": "range inválido."}, status=400)
 
         base_queryset = Order.objects.exclude(status="cancelled").prefetch_related(
             "items__product__category"
@@ -204,7 +235,7 @@ class SalesAnalysisView(APIView):
         )
 
         category_labels = [
-            item["product__category__name"] or "Sin categoria"
+            item["product__category__name"] or "Sin categoría"
             for item in category_sales
         ]
         category_values = [float(item["total_sold"] or 0) for item in category_sales]
@@ -212,7 +243,7 @@ class SalesAnalysisView(APIView):
         category_chart = _build_bar_chart_image(
             category_labels or ["Sin datos"],
             category_values or [0.0],
-            title="Ventas por categoria",
+            title="Ventas por categoría",
             y_label="Ingresos",
             color="#285e61",
         )
@@ -241,7 +272,7 @@ class SalesAnalysisView(APIView):
             ],
             "category_sales": [
                 {
-                    "category": item["product__category__name"] or "Sin categoria",
+                    "category": item["product__category__name"] or "Sin categoría",
                     "total_quantity": int(item["total_quantity"]),
                     "total_sold": float(item["total_sold"] or 0),
                 }

@@ -22,15 +22,19 @@ from django.utils import timezone
 from backend.cart.models import Cart
 
 from .models import Category, Product, Order
-from .models import OrderItem
+from .models import DeliveryCoverageSettings, OrderItem
 from .serializers import (
     AdminManualSaleCreateSerializer,
     CategorySerializer,
+    DeliveryCoverageSettingsSerializer,
+    DeliveryAddressValidationInputSerializer,
+    DeliveryAddressValidationResultSerializer,
     ProductAdminSerializer,
     ProductSerializer,
     OrderSerializer,
     SalesHistoryQuerySerializer,
 )
+from .services.delivery_geo import validate_delivery_address
 
 
 class ProductPagination(PageNumberPagination):
@@ -220,6 +224,90 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = OrderSerializer
     permission_classes = (IsAdminUser,)
     queryset = Order.objects.prefetch_related("items__product").all()
+
+
+class DeliveryAddressValidationView(APIView):
+    """Prevalida direcciones para pedidos de domicilio."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        serializer = DeliveryAddressValidationInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        address = serializer.validated_data["delivery_address"]
+        result = validate_delivery_address(address)
+
+        result_serializer = DeliveryAddressValidationResultSerializer(
+            data={
+                "status": result.status,
+                "message": result.message,
+                "latitude": result.latitude,
+                "longitude": result.longitude,
+                "distance_km": result.distance_km,
+                "delivery_maps_url": result.maps_url,
+            }
+        )
+        result_serializer.is_valid(raise_exception=True)
+
+        status_code = 200 if result.status == "valid" else 400
+        return Response(result_serializer.validated_data, status=status_code)
+
+
+class AdminDeliveryCoverageSettingsView(APIView):
+    """Obtiene y actualiza configuracion de cobertura para domicilios."""
+
+    permission_classes = (IsAdminUser,)
+
+    def get(self, request):
+        settings_obj = DeliveryCoverageSettings.objects.order_by("-updated_at").first()
+        if not settings_obj:
+            return Response(
+                {
+                    "id": None,
+                    "name": "Cobertura principal",
+                    "local_address": "",
+                    "local_city": "",
+                    "local_region": "",
+                    "local_country": "Colombia",
+                    "local_reference": "",
+                    "local_latitude": "",
+                    "local_longitude": "",
+                    "max_delivery_km": "",
+                    "is_enabled": True,
+                    "coverage_note": "",
+                    "updated_at": None,
+                }
+            )
+
+        serializer = DeliveryCoverageSettingsSerializer(settings_obj)
+        return Response(serializer.data)
+
+    def put(self, request):
+        settings_id = request.data.get("id")
+        settings_obj = None
+        if settings_id:
+            settings_obj = get_object_or_404(
+                DeliveryCoverageSettings,
+                id=settings_id,
+            )
+        else:
+            settings_obj = DeliveryCoverageSettings.objects.order_by(
+                "-updated_at"
+            ).first()
+
+        if settings_obj is None:
+            serializer = DeliveryCoverageSettingsSerializer(data=request.data)
+        else:
+            serializer = DeliveryCoverageSettingsSerializer(
+                settings_obj,
+                data=request.data,
+                partial=True,
+            )
+
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 def _annotate_service_date(queryset):

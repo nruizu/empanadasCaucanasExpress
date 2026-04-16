@@ -110,6 +110,7 @@ export interface SalesAnalysisResponse {
   filters: {
     group_by: "weekday" | "week" | "month";
     range: "last_week" | "last_month" | "last_year" | "all";
+    effective_range: "last_week" | "last_month" | "last_year" | "all";
   };
   summary: {
     total_orders: number;

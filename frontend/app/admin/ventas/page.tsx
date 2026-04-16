@@ -62,7 +62,7 @@ export default function AdminSalesPage() {
   const [metrics, setMetrics] = useState<SalesMetrics | null>(null);
   const [filters, setFilters] = useState<SalesHistoryFilters>({
     time_basis: "created",
-    order_source: "manual",
+    status: "completed",
   });
 
   const [form, setForm] = useState<ManualSaleFormState>(INITIAL_FORM);
@@ -430,6 +430,19 @@ export default function AdminSalesPage() {
               <option value="service">Fecha de servicio</option>
             </select>
             <select
+              value={filters.status ?? "completed"}
+              onChange={(event) => applyFilter("status", event.target.value)}
+              className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
+            >
+              <option value="completed">Estado: completado</option>
+              <option value="">Todos los estados</option>
+              <option value="pending">Pendiente</option>
+              <option value="confirmed">Confirmado</option>
+              <option value="preparing">En preparación</option>
+              <option value="ready">Listo</option>
+              <option value="cancelled">Cancelado</option>
+            </select>
+            <select
               value={filters.order_source ?? ""}
               onChange={(event) =>
                 applyFilter("order_source", event.target.value)
@@ -453,7 +466,7 @@ export default function AdminSalesPage() {
             <button
               type="button"
               onClick={() => {
-                setFilters({ time_basis: "created", order_source: "manual" });
+                setFilters({ time_basis: "created", status: "completed" });
               }}
               className="rounded-full border border-[var(--cce-green-dark)] px-4 py-2 text-sm font-semibold text-[var(--cce-green-dark)]"
             >

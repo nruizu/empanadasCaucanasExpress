@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import * as authApi from "@/lib/auth-api";
 import * as cartApi from "@/lib/cart-api";
+import * as deliveryApi from "@/lib/delivery-api";
 
 interface CheckoutFormData {
   customer_name: string;
@@ -16,7 +17,11 @@ interface CheckoutFormData {
   pickup_date: string;
   pickup_time: string;
   scheduled_date: string;
-  delivery_address: string;
+  delivery_local_address: string;
+  delivery_city: string;
+  delivery_region: string;
+  delivery_country: string;
+  delivery_reference: string;
   notes: string;
 }
 
@@ -32,6 +37,13 @@ export default function CheckoutForm() {
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deliveryValidationMessage, setDeliveryValidationMessage] = useState<
+    string | null
+  >(null);
+  const [deliveryValidationStatus, setDeliveryValidationStatus] = useState<
+    "not_validated" | "valid" | "invalid" | "out_of_coverage" | "service_error"
+  >("not_validated");
+  const [validatingDelivery, setValidatingDelivery] = useState(false);
 
   const [formData, setFormData] = useState<CheckoutFormData>({
     customer_name: "",
@@ -41,9 +53,25 @@ export default function CheckoutForm() {
     pickup_date: "",
     pickup_time: "",
     scheduled_date: "",
-    delivery_address: "",
+    delivery_local_address: "",
+    delivery_city: "",
+    delivery_region: "",
+    delivery_country: "Colombia",
+    delivery_reference: "",
     notes: "",
   });
+
+  const buildDeliveryAddress = (data: CheckoutFormData) => {
+    const parts = [
+      data.delivery_local_address.trim(),
+      data.delivery_reference.trim(),
+      data.delivery_city.trim(),
+      data.delivery_region.trim(),
+      data.delivery_country.trim(),
+    ].filter(Boolean);
+
+    return parts.join(", ");
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -59,7 +87,7 @@ export default function CheckoutForm() {
           customer_name: me.full_name || prev.customer_name,
           customer_phone: me.phone || prev.customer_phone,
           customer_email: me.email || prev.customer_email,
-          delivery_address: me.address || prev.delivery_address,
+          delivery_local_address: me.address || prev.delivery_local_address,
         }));
       } catch {
         // no-op: checkout can still be completed manually
@@ -80,12 +108,63 @@ export default function CheckoutForm() {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "delivery_method") {
+      setDeliveryValidationStatus("not_validated");
+      setDeliveryValidationMessage(null);
+    }
+
+    if (name.startsWith("delivery_")) {
+      setDeliveryValidationStatus("not_validated");
+      setDeliveryValidationMessage(null);
+    }
+  };
+
+  const handleValidateDeliveryAddress = async () => {
+    const deliveryAddress = buildDeliveryAddress(formData);
+    if (
+      !formData.delivery_local_address.trim() ||
+      !formData.delivery_city.trim()
+    ) {
+      setDeliveryValidationStatus("invalid");
+      setDeliveryValidationMessage(
+        "Debes ingresar direccion y ciudad/pueblo para validar",
+      );
+      return;
+    }
+
+    setValidatingDelivery(true);
+    setDeliveryValidationMessage(null);
+
+    try {
+      const result = await deliveryApi.validateDeliveryAddress(deliveryAddress);
+      setDeliveryValidationStatus(result.status);
+      setDeliveryValidationMessage(result.message);
+    } catch (err: unknown) {
+      setDeliveryValidationStatus("service_error");
+      setDeliveryValidationMessage(getCheckoutErrorMessage(err));
+    } finally {
+      setValidatingDelivery(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    const deliveryAddress = buildDeliveryAddress(formData);
+
+    if (
+      formData.delivery_method === "delivery" &&
+      deliveryValidationStatus !== "valid"
+    ) {
+      setLoading(false);
+      setError(
+        "Debes validar una direccion de domicilio dentro de cobertura antes de confirmar.",
+      );
+      return;
+    }
 
     try {
       const response = await fetch("http://localhost:8080/api/orders/", {
@@ -108,7 +187,7 @@ export default function CheckoutForm() {
             scheduled_date: formData.scheduled_date,
           }),
           ...(formData.delivery_method === "delivery" && {
-            delivery_address: formData.delivery_address,
+            delivery_address: deliveryAddress,
           }),
           notes: formData.notes,
         }),
@@ -124,7 +203,11 @@ export default function CheckoutForm() {
       if (token) {
         try {
           const cart = await cartApi.getMyCart();
-          if (cart?.id && Array.isArray(cart?.products) && cart.products.length > 0) {
+          if (
+            cart?.id &&
+            Array.isArray(cart?.products) &&
+            cart.products.length > 0
+          ) {
             await cartApi.clearCart(cart.id);
           }
           window.dispatchEvent(new CustomEvent("cart:updated"));
@@ -275,15 +358,73 @@ export default function CheckoutForm() {
           {formData.delivery_method === "delivery" && (
             <div className="p-4 bg-yellow-50 rounded">
               <h3 className="font-semibold mb-2">Dirección de entrega</h3>
-              <textarea
-                name="delivery_address"
-                value={formData.delivery_address}
+              <input
+                name="delivery_local_address"
+                value={formData.delivery_local_address}
                 onChange={handleChange}
                 required
-                rows={3}
                 className="w-full border p-2 rounded"
-                placeholder="Calle, número, barrio..."
+                placeholder="Direccion (ej: Calle 20B #80-15)"
               />
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <input
+                  name="delivery_city"
+                  value={formData.delivery_city}
+                  onChange={handleChange}
+                  required
+                  className="w-full border p-2 rounded"
+                  placeholder="Ciudad o pueblo (ej: Medellin)"
+                />
+                <input
+                  name="delivery_region"
+                  value={formData.delivery_region}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                  placeholder="Departamento/region (ej: Antioquia)"
+                />
+                <input
+                  name="delivery_country"
+                  value={formData.delivery_country}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                  placeholder="Pais (ej: Colombia)"
+                />
+                <input
+                  name="delivery_reference"
+                  value={formData.delivery_reference}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                  placeholder="Referencia (opcional, ej: Barrio Belen)"
+                />
+              </div>
+              <p className="mt-2 text-xs text-gray-600">
+                Vista previa:{" "}
+                {buildDeliveryAddress(formData) || "Completa la direccion"}
+              </p>
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => void handleValidateDeliveryAddress()}
+                  disabled={validatingDelivery}
+                  className="rounded bg-[var(--cce-green-dark)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {validatingDelivery ? "Validando..." : "Validar direccion"}
+                </button>
+                <span className="text-xs text-gray-600">
+                  Solo se valida para pedidos a domicilio.
+                </span>
+              </div>
+              {deliveryValidationMessage && (
+                <p
+                  className={`mt-2 text-sm ${
+                    deliveryValidationStatus === "valid"
+                      ? "text-green-700"
+                      : "text-red-700"
+                  }`}
+                >
+                  {deliveryValidationMessage}
+                </p>
+              )}
             </div>
           )}
 

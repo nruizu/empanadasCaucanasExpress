@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 import AddToCartButton from "@/components/catalog/AddToCartButton";
@@ -34,12 +35,14 @@ export default function ProductCard({
 
   return (
     <article className="overflow-hidden rounded-2xl bg-white shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-      <img
+      <Image
         src={
           selectedVariant.image ||
           "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=1200&q=80"
         }
         alt={product.name}
+        width={1200}
+        height={768}
         className="h-48 w-full object-cover"
       />
       <div className="flex min-h-44 flex-col justify-between p-4">

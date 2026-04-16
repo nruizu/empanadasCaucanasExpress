@@ -28,7 +28,7 @@ const getToken = () => {
   return localStorage.getItem("cce_token");
 };
 
-const buildQuery = (filters?: SalesHistoryFilters) => {
+const buildQuery = <T extends object>(filters?: T) => {
   const params = new URLSearchParams();
   if (!filters) {
     return "";

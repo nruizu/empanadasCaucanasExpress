@@ -2,11 +2,14 @@ import type { PaginatedResponse } from "@/types/catalog";
 import type { OrderHistoryItem } from "@/lib/auth-api";
 
 const API_BASE_URL =
-  (globalThis as { process?: { env?: { NEXT_PUBLIC_API_URL?: string } } }).process?.env
-    ?.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+  (globalThis as { process?: { env?: { NEXT_PUBLIC_API_URL?: string } } })
+    .process?.env?.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 class AdminOrdersApiError extends Error {
-  constructor(message: string, public status: number) {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
     super(message);
     this.name = "AdminOrdersApiError";
   }
@@ -20,7 +23,13 @@ const getToken = () => {
 export interface AdminOrdersQuery {
   page?: number;
   delivery_method?: "pickup" | "delivery" | "scheduled";
-  status?: "pending" | "confirmed" | "preparing" | "ready" | "completed" | "cancelled";
+  status?:
+    | "pending"
+    | "confirmed"
+    | "preparing"
+    | "ready"
+    | "completed"
+    | "cancelled";
   ordering?: "-created_at" | "created_at";
   today?: boolean;
   search?: string;
@@ -31,7 +40,8 @@ export async function getAdminOrders(query: AdminOrdersQuery = {}) {
   const params = new URLSearchParams();
 
   if (query.page) params.set("page", String(query.page));
-  if (query.delivery_method) params.set("delivery_method", query.delivery_method);
+  if (query.delivery_method)
+    params.set("delivery_method", query.delivery_method);
   if (query.status) params.set("status", query.status);
   if (query.ordering) params.set("ordering", query.ordering);
   if (query.today) params.set("today", "true");
@@ -59,7 +69,13 @@ export async function getAdminOrders(query: AdminOrdersQuery = {}) {
 
 export async function updateAdminOrderStatus(
   orderId: number,
-  status: "pending" | "confirmed" | "preparing" | "ready" | "completed" | "cancelled",
+  status:
+    | "pending"
+    | "confirmed"
+    | "preparing"
+    | "ready"
+    | "completed"
+    | "cancelled",
 ) {
   const token = getToken();
 
@@ -74,9 +90,30 @@ export async function updateAdminOrderStatus(
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    const message = body.detail || body.error || body.status?.[0] || "No se pudo actualizar el estado";
+    const message =
+      body.detail ||
+      body.error ||
+      body.status?.[0] ||
+      "No se pudo actualizar el estado";
     throw new AdminOrdersApiError(message, response.status);
   }
 
   return (await response.json()) as OrderHistoryItem;
+}
+
+export async function deleteAdminOrder(orderId: number) {
+  const token = getToken();
+
+  const response = await fetch(`${API_BASE_URL}/orders/${orderId}/`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Token ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const message = body.detail || body.error || "No se pudo borrar el pedido";
+    throw new AdminOrdersApiError(message, response.status);
+  }
 }
