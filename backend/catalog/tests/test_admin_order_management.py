@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
+from unittest.mock import patch
 
-from backend.catalog.models import Order
+from backend.catalog.models import Order, OrderNotification
 
 
 class AdminOrderManagementTests(APITestCase):
@@ -62,3 +63,38 @@ class AdminOrderManagementTests(APITestCase):
 
         order.refresh_from_db()
         self.assertEqual(order.status, "cancelled")
+
+    @patch(
+        "backend.catalog.views.notification_service.send_order_status_update",
+        return_value=(True, "SM_STATUS_123", None),
+    )
+    def test_admin_status_change_sends_whatsapp_notification(self, mock_send):
+        order = Order.objects.create(
+            customer_name="Cliente",
+            customer_phone="3001112233",
+            delivery_method="pickup",
+            pickup_date="2026-04-15",
+            pickup_time="12:00",
+            status="pending",
+            user=self.user,
+            order_source="online",
+        )
+
+        self._auth_admin()
+        response = self.client.patch(
+            f"/api/orders/{order.id}/",
+            {"status": "preparing"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.status, "preparing")
+        mock_send.assert_called_once()
+
+        notification = OrderNotification.objects.filter(
+            order=order,
+            notification_type="status_update",
+        ).latest("id")
+        self.assertEqual(notification.status, "sent")
+        self.assertEqual(notification.twilio_message_sid, "SM_STATUS_123")

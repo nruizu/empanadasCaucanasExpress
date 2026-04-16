@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import get_object_or_404
 from django.db.models import (
     Avg,
@@ -22,7 +24,7 @@ from django.utils import timezone
 from backend.cart.models import Cart
 
 from .models import Category, Product, Order
-from .models import DeliveryCoverageSettings, OrderItem
+from .models import DeliveryCoverageSettings, OrderItem, OrderNotification
 from .serializers import (
     AdminManualSaleCreateSerializer,
     CategorySerializer,
@@ -35,6 +37,9 @@ from .serializers import (
     SalesHistoryQuerySerializer,
 )
 from .services.delivery_geo import validate_delivery_address
+from .services.notification_service import notification_service
+
+logger = logging.getLogger(__name__)
 
 
 class ProductPagination(PageNumberPagination):
@@ -213,6 +218,93 @@ class OrderListCreateView(generics.ListCreateAPIView):
             order.total_amount = total_amount
             order.save(update_fields=["total_amount"])
 
+            # Enviar notificación de confirmación si es pedido online
+            # Solo se envía para: domicilio, fecha futura, o recoger ese día
+            self._send_confirmation_notification(order)
+
+    def _send_confirmation_notification(self, order: Order) -> None:
+        """
+        Envía una notificación de confirmación por WhatsApp si aplica.
+
+        Solo envía notificaciones para:
+        - Pedidos online (order_source == "online")
+        - Entregas a domicilio (delivery_method == "delivery")
+        - Pedidos programados (delivery_method == "scheduled")
+        - Recogidas ese mismo día (delivery_method == "pickup")
+
+        Args:
+            order (Order): Instancia de la orden creada
+        """
+        try:
+            # Verificar que sea un pedido online
+            if order.order_source != "online":
+                OrderNotification.objects.create(
+                    order=order,
+                    notification_type="confirmation",
+                    status="skipped",
+                    phone_number=order.customer_phone,
+                    error_message="Pedido manual - no requiere notificación",
+                )
+                return
+
+            # Verificar que aplique el tipo de entrega
+            if order.delivery_method not in ["delivery", "scheduled", "pickup"]:
+                OrderNotification.objects.create(
+                    order=order,
+                    notification_type="confirmation",
+                    status="skipped",
+                    phone_number=order.customer_phone,
+                    error_message="Tipo de entrega no requiere notificación",
+                )
+                return
+
+            # Crear registro de notificación pendiente
+            notification = OrderNotification.objects.create(
+                order=order,
+                notification_type="confirmation",
+                status="pending",
+                phone_number=order.customer_phone,
+            )
+
+            # Enviar notificación por Twilio/WhatsApp
+            success, message_sid, error = notification_service.send_order_confirmation(
+                phone_number=order.customer_phone,
+                order_id=order.id,
+                customer_name=order.customer_name,
+                delivery_method=order.delivery_method,
+                total_amount=float(order.total_amount),
+                pickup_date=str(order.pickup_date) if order.pickup_date else None,
+                pickup_time=str(order.pickup_time) if order.pickup_time else None,
+                scheduled_date=(
+                    str(order.scheduled_date) if order.scheduled_date else None
+                ),
+            )
+
+            # Actualizar estado de la notificación
+            if success and message_sid:
+                notification.status = "sent"
+                notification.twilio_message_sid = message_sid
+                notification.sent_at = timezone.now()
+            else:
+                notification.status = "failed"
+                notification.error_message = error
+
+            notification.save(
+                update_fields=[
+                    "status",
+                    "twilio_message_sid",
+                    "sent_at",
+                    "error_message",
+                ]
+            )
+
+        except Exception as e:
+            # Si hay error inesperado, registrarlo pero no fallar la creación de orden
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error enviando notificación para orden {order.id}: {str(e)}")
+
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
@@ -224,6 +316,71 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = OrderSerializer
     permission_classes = (IsAdminUser,)
     queryset = Order.objects.prefetch_related("items__product").all()
+
+    def perform_update(self, serializer):
+        previous_status = serializer.instance.status
+        order = serializer.save()
+        self._send_status_update_notification(order, previous_status)
+
+    def _send_status_update_notification(
+        self, order: Order, previous_status: str
+    ) -> None:
+        """Envía notificación cuando el estado cambia a confirmed, preparing o ready."""
+        target_statuses = {"confirmed", "preparing", "ready"}
+
+        if order.status == previous_status:
+            return
+
+        if order.status not in target_statuses:
+            return
+
+        try:
+            if order.order_source != "online":
+                OrderNotification.objects.create(
+                    order=order,
+                    notification_type="status_update",
+                    status="skipped",
+                    phone_number=order.customer_phone,
+                    error_message="Pedido manual - no requiere notificación de estado",
+                )
+                return
+
+            notification = OrderNotification.objects.create(
+                order=order,
+                notification_type="status_update",
+                status="pending",
+                phone_number=order.customer_phone,
+            )
+
+            success, message_sid, error = notification_service.send_order_status_update(
+                phone_number=order.customer_phone,
+                order_id=order.id,
+                customer_name=order.customer_name,
+                status=order.status,
+            )
+
+            if success and message_sid:
+                notification.status = "sent"
+                notification.twilio_message_sid = message_sid
+                notification.sent_at = timezone.now()
+            else:
+                notification.status = "failed"
+                notification.error_message = error
+
+            notification.save(
+                update_fields=[
+                    "status",
+                    "twilio_message_sid",
+                    "sent_at",
+                    "error_message",
+                ]
+            )
+        except Exception as e:
+            logger.error(
+                "Error enviando notificación de estado para orden %s: %s",
+                order.id,
+                str(e),
+            )
 
 
 class DeliveryAddressValidationView(APIView):

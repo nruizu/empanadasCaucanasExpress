@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import * as authApi from "@/lib/auth-api";
 import * as cartApi from "@/lib/cart-api";
@@ -32,11 +32,29 @@ const getCheckoutErrorMessage = (err: unknown) => {
   return "Error al crear el pedido";
 };
 
+const normalizeColombianMobile = (rawPhone: string): string | null => {
+  const digits = rawPhone.replace(/\D/g, "");
+
+  // Formato local: 3XXXXXXXXX (10 digitos)
+  if (digits.length === 10 && digits.startsWith("3")) {
+    return `+57${digits}`;
+  }
+
+  // Formato internacional sin +: 573XXXXXXXXX (12 digitos)
+  if (digits.length === 12 && digits.startsWith("57") && digits[2] === "3") {
+    return `+${digits}`;
+  }
+
+  return null;
+};
+
 export default function CheckoutForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [deliveryValidationMessage, setDeliveryValidationMessage] = useState<
     string | null
   >(null);
@@ -74,6 +92,15 @@ export default function CheckoutForm() {
   };
 
   useEffect(() => {
+    if (searchParams.get("reorder") === "1") {
+      setInfoMessage(
+        "Carrito cargado con los productos de tu pedido anterior.",
+      );
+      router.replace("/checkout");
+    }
+  }, [searchParams, router]);
+
+  useEffect(() => {
     if (!token) return;
 
     let cancelled = false;
@@ -87,7 +114,12 @@ export default function CheckoutForm() {
           customer_name: me.full_name || prev.customer_name,
           customer_phone: me.phone || prev.customer_phone,
           customer_email: me.email || prev.customer_email,
-          delivery_local_address: me.address || prev.delivery_local_address,
+          delivery_local_address:
+            me.delivery_local_address ||
+            me.address ||
+            prev.delivery_local_address,
+          delivery_city: me.delivery_city || prev.delivery_city,
+          delivery_region: me.delivery_region || prev.delivery_region,
         }));
       } catch {
         // no-op: checkout can still be completed manually
@@ -150,6 +182,15 @@ export default function CheckoutForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const normalizedPhone = normalizeColombianMobile(formData.customer_phone);
+    if (!normalizedPhone) {
+      setError(
+        "Ingresa un celular colombiano valido (ej: 3001234567 o +573001234567).",
+      );
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -175,7 +216,7 @@ export default function CheckoutForm() {
         },
         body: JSON.stringify({
           customer_name: formData.customer_name,
-          customer_phone: formData.customer_phone,
+          customer_phone: normalizedPhone,
           customer_email: formData.customer_email,
           delivery_method: formData.delivery_method,
           status: "pending",
@@ -200,6 +241,9 @@ export default function CheckoutForm() {
         );
       }
 
+      const orderData = await response.json();
+      const orderId = orderData.id;
+
       if (token) {
         try {
           const cart = await cartApi.getMyCart();
@@ -216,8 +260,8 @@ export default function CheckoutForm() {
         }
       }
 
-      alert("¡Pedido creado exitosamente!");
-      router.push("/");
+      // Redirigir a página de confirmación
+      router.push(`/confirmacion?orderId=${orderId}`);
     } catch (err: unknown) {
       setError(getCheckoutErrorMessage(err));
     } finally {
@@ -233,6 +277,12 @@ export default function CheckoutForm() {
         {error && (
           <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
             {error}
+          </div>
+        )}
+
+        {infoMessage && (
+          <div className="mb-4 rounded bg-green-100 p-4 text-green-700">
+            {infoMessage}
           </div>
         )}
 
@@ -268,8 +318,15 @@ export default function CheckoutForm() {
               value={formData.customer_phone}
               onChange={handleChange}
               required
+              inputMode="numeric"
+              placeholder="3001234567 o +573001234567"
+              pattern="^(\\+57|57)?3[0-9]{9}$"
               className="w-full border p-2 rounded"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Solo celular colombiano. Ejemplos: 3001234567, 573001234567,
+              +573001234567.
+            </p>
           </div>
 
           <div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import * as authApi from "@/lib/auth-api";
+import * as cartApi from "@/lib/cart-api";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente",
@@ -70,6 +71,9 @@ export default function OrderHistoryPage() {
   );
   const [nowMs, setNowMs] = useState(Date.now());
   const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(
+    null,
+  );
+  const [reorderingOrderId, setReorderingOrderId] = useState<number | null>(
     null,
   );
 
@@ -159,6 +163,44 @@ export default function OrderHistoryPage() {
     }
   };
 
+  const handleReorder = async (orderId: number) => {
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    const order = orders.find((item) => item.id === orderId);
+    if (!order || order.items.length === 0) {
+      setError("Este pedido no tiene productos para volver a pedir.");
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setReorderingOrderId(orderId);
+
+    try {
+      const cart = await cartApi.getMyCart();
+
+      if (cart?.id) {
+        await cartApi.clearCart(cart.id);
+      }
+
+      for (const item of order.items) {
+        await cartApi.addProduct(item.product.id, item.quantity);
+      }
+
+      window.dispatchEvent(new CustomEvent("cart:updated"));
+      router.push("/checkout?reorder=1");
+    } catch (err: unknown) {
+      setError(
+        getErrorMessage(err, "No se pudo preparar el pedido nuevamente"),
+      );
+    } finally {
+      setReorderingOrderId(null);
+    }
+  };
+
   if (loading) {
     return (
       <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
@@ -194,29 +236,49 @@ export default function OrderHistoryPage() {
               <article key={order.id} className="border rounded p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-lg font-semibold">Pedido {order.id}</h2>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-sm px-2 py-1 rounded ${
-                        STATUS_BADGE_STYLES[order.status] ||
-                        "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {STATUS_LABELS[order.status] || order.status}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedOrders((prev: Record<number, boolean>) => ({
-                          ...prev,
-                          [order.id]: !prev[order.id],
-                        }))
-                      }
-                      className="text-sm px-3 py-1 rounded border border-[var(--cce-green-dark)] text-[var(--cce-green-dark)] hover:bg-[var(--cce-green-dark)] hover:text-white"
-                    >
-                      {expandedOrders[order.id]
-                        ? "Ocultar detalle"
-                        : "Ver detalle"}
-                    </button>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-sm px-2 py-1 rounded ${
+                          STATUS_BADGE_STYLES[order.status] ||
+                          "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {STATUS_LABELS[order.status] || order.status}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedOrders(
+                            (prev: Record<number, boolean>) => ({
+                              ...prev,
+                              [order.id]: !prev[order.id],
+                            }),
+                          )
+                        }
+                        className="text-sm px-3 py-1 rounded border border-[var(--cce-green-dark)] text-[var(--cce-green-dark)] hover:bg-[var(--cce-green-dark)] hover:text-white"
+                      >
+                        {expandedOrders[order.id]
+                          ? "Ocultar detalle"
+                          : "Ver detalle"}
+                      </button>
+                    </div>
+
+                    {order.status === "completed" && (
+                      <button
+                        type="button"
+                        onClick={() => void handleReorder(order.id)}
+                        disabled={
+                          reorderingOrderId === order.id ||
+                          order.items.length === 0
+                        }
+                        className="inline-flex rounded bg-[var(--cce-green-dark)] px-3 py-1 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                      >
+                        {reorderingOrderId === order.id
+                          ? "Preparando pedido..."
+                          : "Pedir otra vez"}
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -268,17 +330,6 @@ export default function OrderHistoryPage() {
                       </p>
                       {getDeliveryMapsUrl(order) && (
                         <div className="mt-1 text-sm text-gray-700">
-                          <p>
-                            <strong>URL Maps:</strong>{" "}
-                            <a
-                              href={getDeliveryMapsUrl(order)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-blue-700 underline break-all"
-                            >
-                              {getDeliveryMapsUrl(order)}
-                            </a>
-                          </p>
                           <a
                             href={getDeliveryMapsUrl(order)}
                             target="_blank"
