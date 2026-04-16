@@ -4,12 +4,10 @@ Incluye tests unitarios y de integración.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, date
-import logging
+from unittest.mock import patch, MagicMock
+from datetime import date
 
-from django.test import TestCase, TransactionTestCase
-from django.utils import timezone
+from django.test import TransactionTestCase
 from django.contrib.auth.models import User
 
 from backend.catalog.models import Order, OrderNotification, Product, Category
@@ -186,7 +184,8 @@ class TwilioNotificationServiceIntegrationTests(TransactionTestCase):
         )
 
     @patch(
-        "backend.catalog.services.notification_service.TwilioNotificationService._client"
+        "backend.catalog.services.notification_service."
+        "TwilioNotificationService._client"
     )
     def test_send_order_confirmation_success(self, mock_client):
         """

@@ -93,7 +93,9 @@ export default function CheckoutForm() {
 
   useEffect(() => {
     if (searchParams.get("reorder") === "1") {
-      setInfoMessage("Carrito cargado con los productos de tu pedido anterior.");
+      setInfoMessage(
+        "Carrito cargado con los productos de tu pedido anterior.",
+      );
       router.replace("/checkout");
     }
   }, [searchParams, router]);
@@ -113,7 +115,9 @@ export default function CheckoutForm() {
           customer_phone: me.phone || prev.customer_phone,
           customer_email: me.email || prev.customer_email,
           delivery_local_address:
-            me.delivery_local_address || me.address || prev.delivery_local_address,
+            me.delivery_local_address ||
+            me.address ||
+            prev.delivery_local_address,
           delivery_city: me.delivery_city || prev.delivery_city,
           delivery_region: me.delivery_region || prev.delivery_region,
         }));

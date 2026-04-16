@@ -208,7 +208,9 @@ export default function CuentaPage() {
 
           <hr className="my-6" />
 
-          <h2 className="text-lg font-semibold">Información para entregas a domicilio</h2>
+          <h2 className="text-lg font-semibold">
+            Información para entregas a domicilio
+          </h2>
 
           <div>
             <label className="block text-sm font-medium mb-1">

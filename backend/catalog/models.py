@@ -339,4 +339,7 @@ class OrderNotification(models.Model):
         ]
 
     def __str__(self):
-        return f"Notificación {self.notification_type} - Pedido {self.order.id} ({self.status})"
+        return (
+            f"Notificación {self.notification_type} - "
+            f"Pedido {self.order.id} ({self.status})"
+        )

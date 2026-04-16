@@ -20,7 +20,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import transaction
 from django.utils import timezone
-from datetime import datetime
 
 from backend.cart.models import Cart
 
@@ -276,7 +275,9 @@ class OrderListCreateView(generics.ListCreateAPIView):
                 total_amount=float(order.total_amount),
                 pickup_date=str(order.pickup_date) if order.pickup_date else None,
                 pickup_time=str(order.pickup_time) if order.pickup_time else None,
-                scheduled_date=str(order.scheduled_date) if order.scheduled_date else None,
+                scheduled_date=(
+                    str(order.scheduled_date) if order.scheduled_date else None
+                ),
             )
 
             # Actualizar estado de la notificación
@@ -289,7 +290,12 @@ class OrderListCreateView(generics.ListCreateAPIView):
                 notification.error_message = error
 
             notification.save(
-                update_fields=["status", "twilio_message_sid", "sent_at", "error_message"]
+                update_fields=[
+                    "status",
+                    "twilio_message_sid",
+                    "sent_at",
+                    "error_message",
+                ]
             )
 
         except Exception as e:
@@ -297,9 +303,7 @@ class OrderListCreateView(generics.ListCreateAPIView):
             import logging
 
             logger = logging.getLogger(__name__)
-            logger.error(
-                f"Error enviando notificación para orden {order.id}: {str(e)}"
-            )
+            logger.error(f"Error enviando notificación para orden {order.id}: {str(e)}")
 
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -318,7 +322,9 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
         order = serializer.save()
         self._send_status_update_notification(order, previous_status)
 
-    def _send_status_update_notification(self, order: Order, previous_status: str) -> None:
+    def _send_status_update_notification(
+        self, order: Order, previous_status: str
+    ) -> None:
         """Envía notificación cuando el estado cambia a confirmed, preparing o ready."""
         target_statuses = {"confirmed", "preparing", "ready"}
 
@@ -362,7 +368,12 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
                 notification.error_message = error
 
             notification.save(
-                update_fields=["status", "twilio_message_sid", "sent_at", "error_message"]
+                update_fields=[
+                    "status",
+                    "twilio_message_sid",
+                    "sent_at",
+                    "error_message",
+                ]
             )
         except Exception as e:
             logger.error(

@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import useAuth from "@/context/AuthContext";
 
 interface OrderConfirmationData {
   order_id: number;
@@ -19,22 +18,22 @@ interface OrderConfirmationData {
 export default function OrderConfirmationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuth();
-  const [orderData, setOrderData] = useState<OrderConfirmationData | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const orderData = useMemo<OrderConfirmationData | null>(() => {
     const orderId = searchParams.get("orderId");
-
     if (!orderId) {
-      router.replace("/");
-      return;
+      return null;
+    }
+
+    const parsedOrderId = Number.parseInt(orderId, 10);
+    if (Number.isNaN(parsedOrderId)) {
+      return null;
     }
 
     // Simular carga de datos del pedido
     // En producción, esto vendría del backend
-    const mockOrderData: OrderConfirmationData = {
-      order_id: parseInt(orderId, 10),
+    return {
+      order_id: parsedOrderId,
       customer_name: "Nombre del Cliente",
       delivery_method: "pickup",
       total_amount: 50000,
@@ -42,26 +41,21 @@ export default function OrderConfirmationPage() {
       pickup_time: "15:00",
       status: "pending",
     };
+  }, [searchParams]);
 
-    setOrderData(mockOrderData);
-    setLoading(false);
-  }, [searchParams, router]);
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
-        <div className="mx-auto max-w-2xl bg-white p-6 rounded text-center">
-          Cargando confirmación...
-        </div>
-      </main>
-    );
-  }
+  useEffect(() => {
+    if (!orderData) {
+      router.replace("/");
+    }
+  }, [orderData, router]);
 
   if (!orderData) {
     return (
       <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
         <div className="mx-auto max-w-2xl bg-white p-6 rounded text-center">
-          <p className="text-red-600">No se encontró la información del pedido</p>
+          <p className="text-red-600">
+            No se encontró la información del pedido
+          </p>
           <Link
             href="/"
             className="mt-4 inline-block rounded bg-[var(--cce-green-dark)] text-white px-6 py-2"
@@ -134,7 +128,9 @@ export default function OrderConfirmationPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             {/* Monto Total */}
             <div className="border rounded-lg p-4 bg-blue-50">
-              <p className="text-sm text-gray-600 font-semibold">Total del pedido</p>
+              <p className="text-sm text-gray-600 font-semibold">
+                Total del pedido
+              </p>
               <p className="text-2xl font-bold text-[var(--cce-green-dark)] mt-2">
                 ${orderData.total_amount.toLocaleString()}
               </p>
@@ -142,7 +138,9 @@ export default function OrderConfirmationPage() {
 
             {/* Estado */}
             <div className="border rounded-lg p-4 bg-amber-50">
-              <p className="text-sm text-gray-600 font-semibold">Estado actual</p>
+              <p className="text-sm text-gray-600 font-semibold">
+                Estado actual
+              </p>
               <p className="text-2xl font-bold text-amber-700 mt-2">
                 {getStatusLabel(orderData.status)}
               </p>
@@ -197,12 +195,11 @@ export default function OrderConfirmationPage() {
                 />
               </svg>
               <div>
-                <p className="font-semibold text-yellow-800 mb-1">
-                  Importante
-                </p>
+                <p className="font-semibold text-yellow-800 mb-1">Importante</p>
                 <p className="text-sm text-yellow-700">
-                  Hemos enviado los detalles de tu pedido a tu número de WhatsApp.
-                  Guarda este número de pedido para futuras referencias.
+                  Hemos enviado los detalles de tu pedido a tu número de
+                  WhatsApp. Guarda este número de pedido para futuras
+                  referencias.
                 </p>
               </div>
             </div>

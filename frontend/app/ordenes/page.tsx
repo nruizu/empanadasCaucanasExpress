@@ -193,7 +193,9 @@ export default function OrderHistoryPage() {
       window.dispatchEvent(new CustomEvent("cart:updated"));
       router.push("/checkout?reorder=1");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "No se pudo preparar el pedido nuevamente"));
+      setError(
+        getErrorMessage(err, "No se pudo preparar el pedido nuevamente"),
+      );
     } finally {
       setReorderingOrderId(null);
     }
@@ -247,10 +249,12 @@ export default function OrderHistoryPage() {
                       <button
                         type="button"
                         onClick={() =>
-                          setExpandedOrders((prev: Record<number, boolean>) => ({
-                            ...prev,
-                            [order.id]: !prev[order.id],
-                          }))
+                          setExpandedOrders(
+                            (prev: Record<number, boolean>) => ({
+                              ...prev,
+                              [order.id]: !prev[order.id],
+                            }),
+                          )
                         }
                         className="text-sm px-3 py-1 rounded border border-[var(--cce-green-dark)] text-[var(--cce-green-dark)] hover:bg-[var(--cce-green-dark)] hover:text-white"
                       >
@@ -265,7 +269,8 @@ export default function OrderHistoryPage() {
                         type="button"
                         onClick={() => void handleReorder(order.id)}
                         disabled={
-                          reorderingOrderId === order.id || order.items.length === 0
+                          reorderingOrderId === order.id ||
+                          order.items.length === 0
                         }
                         className="inline-flex rounded bg-[var(--cce-green-dark)] px-3 py-1 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
                       >
