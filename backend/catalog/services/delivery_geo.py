@@ -1,12 +1,11 @@
-import json
 import math
 import re
 import unicodedata
 from dataclasses import dataclass
 from decimal import Decimal
-from urllib.parse import quote_plus
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
+from urllib.parse import quote_plus, urlsplit
+
+import requests
 
 from django.conf import settings
 from django.core.cache import cache
@@ -98,13 +97,20 @@ def build_address_queries(raw_address: str) -> list[str]:
     return queries
 
 
-def build_google_maps_url(latitude: Decimal | None, longitude: Decimal | None, address: str) -> str:
+def build_google_maps_url(
+    latitude: Decimal | None,
+    longitude: Decimal | None,
+    address: str,
+) -> str:
     if latitude is not None and longitude is not None:
         destination = f"{latitude},{longitude}"
     else:
         destination = address
 
-    return f"https://www.google.com/maps/dir/?api=1&destination={quote_plus(str(destination))}"
+    return (
+        "https://www.google.com/maps/dir/?api=1&destination="
+        f"{quote_plus(str(destination))}"
+    )
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> Decimal:
@@ -150,19 +156,33 @@ def _geocode_with_nominatim(address_query: str) -> tuple[Decimal, Decimal]:
         f"{base_url}?q={quote_plus(address_query)}&format=json&limit=1"
         f"&addressdetails=0&countrycodes={quote_plus(country_code)}"
     )
-    request = Request(url, headers={"User-Agent": user_agent})
+    parsed_url = urlsplit(url)
+    if parsed_url.scheme not in {"http", "https"}:
+        raise DeliveryValidationError("El servicio de mapas tiene un esquema invalido")
 
     try:
-        with urlopen(request, timeout=timeout_seconds) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except HTTPError as exc:
-        if exc.code in (429, 503):
-            raise DeliveryValidationError("El servicio de geocodificacion no esta disponible")
+        response = requests.get(
+            url,
+            headers={"User-Agent": user_agent},
+            timeout=timeout_seconds,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except requests.exceptions.HTTPError as exc:
+        status_code = getattr(exc.response, "status_code", None)
+        if status_code in (429, 503):
+            raise DeliveryValidationError(
+                "El servicio de geocodificacion no esta disponible"
+            )
         raise DeliveryValidationError("No fue posible validar la direccion")
-    except URLError:
-        raise DeliveryValidationError("No fue posible conectar con el servicio de mapas")
-    except TimeoutError:
-        raise DeliveryValidationError("Tiempo de espera agotado al validar la direccion")
+    except requests.exceptions.Timeout:
+        raise DeliveryValidationError(
+            "Tiempo de espera agotado al validar la direccion"
+        )
+    except requests.exceptions.RequestException:
+        raise DeliveryValidationError(
+            "No fue posible conectar con el servicio de mapas"
+        )
 
     if not payload:
         raise DeliveryValidationError("not-found")
@@ -215,7 +235,10 @@ def geocode_address(raw_address: str) -> tuple[Decimal, Decimal]:
 def get_coverage_origin_coordinates(
     settings_obj: DeliveryCoverageSettings,
 ) -> tuple[Decimal, Decimal]:
-    if settings_obj.local_latitude is not None and settings_obj.local_longitude is not None:
+    if (
+        settings_obj.local_latitude is not None
+        and settings_obj.local_longitude is not None
+    ):
         return settings_obj.local_latitude, settings_obj.local_longitude
 
     origin_query = build_local_origin_query(settings_obj)

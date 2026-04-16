@@ -210,9 +210,7 @@ class OrderSerializer(serializers.ModelSerializer):
             data["delivery_maps_url"] = result.maps_url
 
             if result.status in {"invalid", "out_of_coverage", "service_error"}:
-                raise serializers.ValidationError(
-                    {"delivery_address": result.message}
-                )
+                raise serializers.ValidationError({"delivery_address": result.message})
 
         if current_delivery_method != "delivery":
             data["address_validation_status"] = "not_validated"

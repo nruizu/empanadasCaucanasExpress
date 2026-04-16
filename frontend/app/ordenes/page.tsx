@@ -54,6 +54,10 @@ function getDeliveryMapsUrl(order: authApi.OrderHistoryItem) {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.delivery_address)}`;
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function OrderHistoryPage() {
   const router = useRouter();
   const { token } = useAuth();
@@ -61,9 +65,13 @@ export default function OrderHistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [orders, setOrders] = useState<authApi.OrderHistoryItem[]>([]);
-  const [expandedOrders, setExpandedOrders] = useState<Record<number, boolean>>({});
+  const [expandedOrders, setExpandedOrders] = useState<Record<number, boolean>>(
+    {},
+  );
   const [nowMs, setNowMs] = useState(Date.now());
-  const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(null);
+  const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -112,9 +120,11 @@ export default function OrderHistoryPage() {
         const data = await authApi.myOrderHistory(token);
         if (cancelled) return;
         setOrders(data.results || []);
-      } catch (err: any) {
+      } catch (error: unknown) {
         if (cancelled) return;
-        setError(err?.message || "No se pudo cargar el historial de pedidos");
+        setError(
+          getErrorMessage(error, "No se pudo cargar el historial de pedidos"),
+        );
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -142,9 +152,7 @@ export default function OrderHistoryPage() {
       setSuccess(`Pedido ${orderId} cancelado correctamente.`);
     } catch (err: unknown) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "No se pudo cancelar el pedido.",
+        err instanceof Error ? err.message : "No se pudo cancelar el pedido.",
       );
     } finally {
       setCancellingOrderId(null);
@@ -154,7 +162,9 @@ export default function OrderHistoryPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
-        <div className="mx-auto max-w-4xl bg-white p-6 rounded">Cargando historial...</div>
+        <div className="mx-auto max-w-4xl bg-white p-6 rounded">
+          Cargando historial...
+        </div>
       </main>
     );
   }
@@ -187,7 +197,8 @@ export default function OrderHistoryPage() {
                   <div className="flex items-center gap-2">
                     <span
                       className={`text-sm px-2 py-1 rounded ${
-                        STATUS_BADGE_STYLES[order.status] || "bg-gray-100 text-gray-700"
+                        STATUS_BADGE_STYLES[order.status] ||
+                        "bg-gray-100 text-gray-700"
                       }`}
                     >
                       {STATUS_LABELS[order.status] || order.status}
@@ -202,7 +213,9 @@ export default function OrderHistoryPage() {
                       }
                       className="text-sm px-3 py-1 rounded border border-[var(--cce-green-dark)] text-[var(--cce-green-dark)] hover:bg-[var(--cce-green-dark)] hover:text-white"
                     >
-                      {expandedOrders[order.id] ? "Ocultar detalle" : "Ver detalle"}
+                      {expandedOrders[order.id]
+                        ? "Ocultar detalle"
+                        : "Ver detalle"}
                     </button>
                   </div>
                 </div>
@@ -211,16 +224,20 @@ export default function OrderHistoryPage() {
                   <strong>Fecha:</strong> {formatDate(order.created_at)}
                 </p>
                 <p className="text-sm text-gray-700">
-                  <strong>Modalidad:</strong> {DELIVERY_LABELS[order.delivery_method] || order.delivery_method}
+                  <strong>Modalidad:</strong>{" "}
+                  {DELIVERY_LABELS[order.delivery_method] ||
+                    order.delivery_method}
                 </p>
                 <p className="text-sm text-gray-700">
-                  <strong>Total:</strong> ${Number(order.total_amount).toFixed(0)}
+                  <strong>Total:</strong> $
+                  {Number(order.total_amount).toFixed(0)}
                 </p>
 
                 {canCancelOrder(order) && (
                   <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
                     <p>
-                      Tiempo restante para cancelar: {formatCountdown(getRemainingCancelMs(order))}
+                      Tiempo restante para cancelar:{" "}
+                      {formatCountdown(getRemainingCancelMs(order))}
                     </p>
                     <button
                       type="button"
@@ -228,57 +245,64 @@ export default function OrderHistoryPage() {
                       disabled={cancellingOrderId === order.id}
                       className="mt-2 inline-flex rounded bg-red-600 px-3 py-1 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
                     >
-                      {cancellingOrderId === order.id ? "Cancelando..." : "Cancelar pedido"}
+                      {cancellingOrderId === order.id
+                        ? "Cancelando..."
+                        : "Cancelar pedido"}
                     </button>
                   </div>
                 )}
 
-                {!canCancelOrder(order) && order.status !== "cancelled" && order.status !== "completed" && (
-                  <p className="mt-2 text-sm text-gray-500">
-                    El tiempo para cancelar este pedido ya expiro.
-                  </p>
-                )}
-
-                {order.delivery_method === "delivery" && order.delivery_address && (
-                  <>
-                    <p className="text-sm text-gray-700">
-                      <strong>Direccion:</strong> {order.delivery_address}
+                {!canCancelOrder(order) &&
+                  order.status !== "cancelled" &&
+                  order.status !== "completed" && (
+                    <p className="mt-2 text-sm text-gray-500">
+                      El tiempo para cancelar este pedido ya expiro.
                     </p>
-                    {getDeliveryMapsUrl(order) && (
-                      <div className="mt-1 text-sm text-gray-700">
-                        <p>
-                          <strong>URL Maps:</strong>{" "}
+                  )}
+
+                {order.delivery_method === "delivery" &&
+                  order.delivery_address && (
+                    <>
+                      <p className="text-sm text-gray-700">
+                        <strong>Direccion:</strong> {order.delivery_address}
+                      </p>
+                      {getDeliveryMapsUrl(order) && (
+                        <div className="mt-1 text-sm text-gray-700">
+                          <p>
+                            <strong>URL Maps:</strong>{" "}
+                            <a
+                              href={getDeliveryMapsUrl(order)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-700 underline break-all"
+                            >
+                              {getDeliveryMapsUrl(order)}
+                            </a>
+                          </p>
                           <a
                             href={getDeliveryMapsUrl(order)}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-blue-700 underline break-all"
+                            className="mt-2 inline-flex rounded bg-blue-600 px-3 py-1 text-sm font-semibold text-white hover:bg-blue-700"
                           >
-                            {getDeliveryMapsUrl(order)}
+                            Abrir en Google Maps
                           </a>
-                        </p>
-                        <a
-                          href={getDeliveryMapsUrl(order)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-2 inline-flex rounded bg-blue-600 px-3 py-1 text-sm font-semibold text-white hover:bg-blue-700"
-                        >
-                          Abrir en Google Maps
-                        </a>
-                      </div>
-                    )}
-                  </>
-                )}
+                        </div>
+                      )}
+                    </>
+                  )}
 
                 {order.delivery_method === "pickup" && (
                   <p className="text-sm text-gray-700">
-                    <strong>Recogida:</strong> {order.pickup_date || "-"} {order.pickup_time || ""}
+                    <strong>Recogida:</strong> {order.pickup_date || "-"}{" "}
+                    {order.pickup_time || ""}
                   </p>
                 )}
 
                 {order.delivery_method === "scheduled" && (
                   <p className="text-sm text-gray-700">
-                    <strong>Programado para:</strong> {order.scheduled_date || "-"}
+                    <strong>Programado para:</strong>{" "}
+                    {order.scheduled_date || "-"}
                   </p>
                 )}
 
@@ -292,19 +316,35 @@ export default function OrderHistoryPage() {
                   <div className="mt-4 border-t pt-4">
                     <h3 className="font-semibold mb-3">Productos del pedido</h3>
                     {order.items.length === 0 ? (
-                      <p className="text-sm text-gray-600">Este pedido no tiene productos asociados.</p>
+                      <p className="text-sm text-gray-600">
+                        Este pedido no tiene productos asociados.
+                      </p>
                     ) : (
                       <div className="space-y-3">
-                        {order.items.map((item: authApi.OrderHistoryItem["items"][number]) => (
-                          <div key={item.id} className="flex items-start justify-between gap-4 rounded bg-gray-50 p-3">
-                            <div>
-                              <p className="font-medium">{item.product.name}</p>
-                              <p className="text-sm text-gray-600">Cantidad: {item.quantity}</p>
-                              <p className="text-sm text-gray-600">Precio unitario: ${Number(item.unit_price).toFixed(0)}</p>
+                        {order.items.map(
+                          (item: authApi.OrderHistoryItem["items"][number]) => (
+                            <div
+                              key={item.id}
+                              className="flex items-start justify-between gap-4 rounded bg-gray-50 p-3"
+                            >
+                              <div>
+                                <p className="font-medium">
+                                  {item.product.name}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  Cantidad: {item.quantity}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  Precio unitario: $
+                                  {Number(item.unit_price).toFixed(0)}
+                                </p>
+                              </div>
+                              <p className="text-sm font-semibold">
+                                Subtotal: ${Number(item.subtotal).toFixed(0)}
+                              </p>
                             </div>
-                            <p className="text-sm font-semibold">Subtotal: ${Number(item.subtotal).toFixed(0)}</p>
-                          </div>
-                        ))}
+                          ),
+                        )}
                       </div>
                     )}
                   </div>

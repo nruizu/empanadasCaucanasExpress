@@ -22,10 +22,22 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("name", models.CharField(default="Cobertura principal", max_length=120)),
-                ("local_latitude", models.DecimalField(decimal_places=7, max_digits=10)),
-                ("local_longitude", models.DecimalField(decimal_places=7, max_digits=10)),
-                ("max_delivery_km", models.DecimalField(decimal_places=2, max_digits=6)),
+                (
+                    "name",
+                    models.CharField(default="Cobertura principal", max_length=120),
+                ),
+                (
+                    "local_latitude",
+                    models.DecimalField(decimal_places=7, max_digits=10),
+                ),
+                (
+                    "local_longitude",
+                    models.DecimalField(decimal_places=7, max_digits=10),
+                ),
+                (
+                    "max_delivery_km",
+                    models.DecimalField(decimal_places=2, max_digits=6),
+                ),
                 ("is_enabled", models.BooleanField(default=True)),
                 ("coverage_note", models.CharField(blank=True, max_length=255)),
                 ("updated_at", models.DateTimeField(auto_now=True)),

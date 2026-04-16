@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Category } from "@/types/catalog";
 
 interface CategoryCardProps {
@@ -29,9 +30,11 @@ export default function CategoryCard({
       }`}
       aria-pressed={selected}
     >
-      <img
+      <Image
         src={category.image || CATEGORY_IMAGES[category.slug] || "/default.jpg"}
         alt={category.name}
+        width={640}
+        height={256}
         className="h-32 w-full object-cover"
       />
       <div className="p-3">

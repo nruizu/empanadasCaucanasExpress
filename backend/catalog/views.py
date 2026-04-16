@@ -272,9 +272,14 @@ class AdminDeliveryCoverageSettingsView(APIView):
         settings_id = request.data.get("id")
         settings_obj = None
         if settings_id:
-            settings_obj = get_object_or_404(DeliveryCoverageSettings, id=settings_id)
+            settings_obj = get_object_or_404(
+                DeliveryCoverageSettings,
+                id=settings_id,
+            )
         else:
-            settings_obj = DeliveryCoverageSettings.objects.order_by("-updated_at").first()
+            settings_obj = DeliveryCoverageSettings.objects.order_by(
+                "-updated_at"
+            ).first()
 
         if settings_obj is None:
             serializer = DeliveryCoverageSettingsSerializer(data=request.data)

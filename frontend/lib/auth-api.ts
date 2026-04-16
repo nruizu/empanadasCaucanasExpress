@@ -17,7 +17,13 @@ export interface OrderHistoryItem {
   customer_phone: string;
   customer_email: string | null;
   delivery_method: "pickup" | "delivery" | "scheduled";
-  status: "pending" | "confirmed" | "preparing" | "ready" | "completed" | "cancelled";
+  status:
+    | "pending"
+    | "confirmed"
+    | "preparing"
+    | "ready"
+    | "completed"
+    | "cancelled";
   pickup_date: string | null;
   pickup_time: string | null;
   scheduled_date: string | null;
@@ -25,7 +31,12 @@ export interface OrderHistoryItem {
   delivery_latitude?: string | null;
   delivery_longitude?: string | null;
   delivery_distance_km?: string | null;
-  address_validation_status?: "not_validated" | "valid" | "invalid" | "out_of_coverage" | "service_error";
+  address_validation_status?:
+    | "not_validated"
+    | "valid"
+    | "invalid"
+    | "out_of_coverage"
+    | "service_error";
   address_validation_message?: string;
   delivery_maps_url?: string;
   notes: string | null;
@@ -165,8 +176,8 @@ export async function updateMe(
 }
 
 export async function myOrderHistory(token: string) {
-  return request('/report/orders/me/', {
-    method: 'GET',
+  return request("/report/orders/me/", {
+    method: "GET",
     headers: {
       Authorization: `Token ${token}`,
     },
@@ -182,7 +193,7 @@ export async function cancelMyOrder(token: string, orderId: number) {
   }) as Promise<OrderHistoryItem>;
 }
 
-export default {
+const authApi = {
   register,
   login,
   logout,
@@ -191,3 +202,5 @@ export default {
   myOrderHistory,
   cancelMyOrder,
 };
+
+export default authApi;

@@ -37,7 +37,9 @@ export default function CheckoutForm() {
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deliveryValidationMessage, setDeliveryValidationMessage] = useState<string | null>(null);
+  const [deliveryValidationMessage, setDeliveryValidationMessage] = useState<
+    string | null
+  >(null);
   const [deliveryValidationStatus, setDeliveryValidationStatus] = useState<
     "not_validated" | "valid" | "invalid" | "out_of_coverage" | "service_error"
   >("not_validated");
@@ -120,9 +122,14 @@ export default function CheckoutForm() {
 
   const handleValidateDeliveryAddress = async () => {
     const deliveryAddress = buildDeliveryAddress(formData);
-    if (!formData.delivery_local_address.trim() || !formData.delivery_city.trim()) {
+    if (
+      !formData.delivery_local_address.trim() ||
+      !formData.delivery_city.trim()
+    ) {
       setDeliveryValidationStatus("invalid");
-      setDeliveryValidationMessage("Debes ingresar direccion y ciudad/pueblo para validar");
+      setDeliveryValidationMessage(
+        "Debes ingresar direccion y ciudad/pueblo para validar",
+      );
       return;
     }
 
@@ -130,9 +137,7 @@ export default function CheckoutForm() {
     setDeliveryValidationMessage(null);
 
     try {
-      const result = await deliveryApi.validateDeliveryAddress(
-        deliveryAddress,
-      );
+      const result = await deliveryApi.validateDeliveryAddress(deliveryAddress);
       setDeliveryValidationStatus(result.status);
       setDeliveryValidationMessage(result.message);
     } catch (err: unknown) {
@@ -150,9 +155,14 @@ export default function CheckoutForm() {
 
     const deliveryAddress = buildDeliveryAddress(formData);
 
-    if (formData.delivery_method === "delivery" && deliveryValidationStatus !== "valid") {
+    if (
+      formData.delivery_method === "delivery" &&
+      deliveryValidationStatus !== "valid"
+    ) {
       setLoading(false);
-      setError("Debes validar una direccion de domicilio dentro de cobertura antes de confirmar.");
+      setError(
+        "Debes validar una direccion de domicilio dentro de cobertura antes de confirmar.",
+      );
       return;
     }
 
@@ -193,7 +203,11 @@ export default function CheckoutForm() {
       if (token) {
         try {
           const cart = await cartApi.getMyCart();
-          if (cart?.id && Array.isArray(cart?.products) && cart.products.length > 0) {
+          if (
+            cart?.id &&
+            Array.isArray(cart?.products) &&
+            cart.products.length > 0
+          ) {
             await cartApi.clearCart(cart.id);
           }
           window.dispatchEvent(new CustomEvent("cart:updated"));
@@ -384,7 +398,8 @@ export default function CheckoutForm() {
                 />
               </div>
               <p className="mt-2 text-xs text-gray-600">
-                Vista previa: {buildDeliveryAddress(formData) || "Completa la direccion"}
+                Vista previa:{" "}
+                {buildDeliveryAddress(formData) || "Completa la direccion"}
               </p>
               <div className="mt-3 flex items-center gap-3">
                 <button
@@ -402,7 +417,9 @@ export default function CheckoutForm() {
               {deliveryValidationMessage && (
                 <p
                   className={`mt-2 text-sm ${
-                    deliveryValidationStatus === "valid" ? "text-green-700" : "text-red-700"
+                    deliveryValidationStatus === "valid"
+                      ? "text-green-700"
+                      : "text-red-700"
                   }`}
                 >
                   {deliveryValidationMessage}

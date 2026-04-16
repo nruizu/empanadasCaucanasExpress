@@ -209,7 +209,8 @@ export default function AdminCoveragePage() {
             Cobertura de domicilios
           </h1>
           <p className="mt-1 text-sm text-[var(--cce-text-muted)]">
-            Configura la direccion del local y el radio maximo de entrega en kilometros.
+            Configura la direccion del local y el radio maximo de entrega en
+            kilometros.
           </p>
 
           {error && (
@@ -225,9 +226,14 @@ export default function AdminCoveragePage() {
           )}
 
           {loading ? (
-            <p className="mt-4 text-sm text-[var(--cce-text-muted)]">Cargando configuración...</p>
+            <p className="mt-4 text-sm text-[var(--cce-text-muted)]">
+              Cargando configuración...
+            </p>
           ) : (
-            <form onSubmit={handleSubmit} className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form
+              onSubmit={handleSubmit}
+              className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2"
+            >
               <input
                 value={form.name}
                 onChange={(event) => updateField("name", event.target.value)}
@@ -237,42 +243,54 @@ export default function AdminCoveragePage() {
 
               <input
                 value={form.local_address}
-                onChange={(event) => updateField("local_address", event.target.value)}
+                onChange={(event) =>
+                  updateField("local_address", event.target.value)
+                }
                 placeholder="Direccion del local (ej: Calle 20B #80-15)"
                 className="md:col-span-2 rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
               />
 
               <input
                 value={form.local_city}
-                onChange={(event) => updateField("local_city", event.target.value)}
+                onChange={(event) =>
+                  updateField("local_city", event.target.value)
+                }
                 placeholder="Ciudad o pueblo (ej: Medellin)"
                 className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
               />
 
               <input
                 value={form.local_region}
-                onChange={(event) => updateField("local_region", event.target.value)}
+                onChange={(event) =>
+                  updateField("local_region", event.target.value)
+                }
                 placeholder="Departamento/region (ej: Antioquia)"
                 className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
               />
 
               <input
                 value={form.local_country}
-                onChange={(event) => updateField("local_country", event.target.value)}
+                onChange={(event) =>
+                  updateField("local_country", event.target.value)
+                }
                 placeholder="Pais (ej: Colombia)"
                 className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
               />
 
               <input
                 value={form.local_reference}
-                onChange={(event) => updateField("local_reference", event.target.value)}
+                onChange={(event) =>
+                  updateField("local_reference", event.target.value)
+                }
                 placeholder="Referencia (opcional, ej: Barrio Belen)"
                 className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
               />
 
               <input
                 value={form.max_delivery_km}
-                onChange={(event) => updateField("max_delivery_km", event.target.value)}
+                onChange={(event) =>
+                  updateField("max_delivery_km", event.target.value)
+                }
                 placeholder="Limite de cobertura km (ej: 20)"
                 className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
               />
@@ -295,14 +313,18 @@ export default function AdminCoveragePage() {
                 <input
                   type="checkbox"
                   checked={form.is_enabled}
-                  onChange={(event) => updateField("is_enabled", event.target.checked)}
+                  onChange={(event) =>
+                    updateField("is_enabled", event.target.checked)
+                  }
                 />
                 Cobertura activa
               </label>
 
               <textarea
                 value={form.coverage_note}
-                onChange={(event) => updateField("coverage_note", event.target.value)}
+                onChange={(event) =>
+                  updateField("coverage_note", event.target.value)
+                }
                 placeholder="Nota interna de cobertura (opcional)"
                 rows={3}
                 className="md:col-span-2 rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
@@ -318,7 +340,10 @@ export default function AdminCoveragePage() {
                 </button>
 
                 <p className="text-xs text-[var(--cce-text-muted)]">
-                  Última actualización: {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleString("es-CO") : "Sin registros"}
+                  Última actualización:{" "}
+                  {lastUpdatedAt
+                    ? new Date(lastUpdatedAt).toLocaleString("es-CO")
+                    : "Sin registros"}
                 </p>
               </div>
             </form>

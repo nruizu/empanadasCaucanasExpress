@@ -76,7 +76,10 @@ export default function Navbar() {
 
         {/* Derecha: carrito */}
         {token ? (
-          <Link href="/carrito" className="relative cursor-pointer p-2 hover:opacity-80">
+          <Link
+            href="/carrito"
+            className="relative cursor-pointer p-2 hover:opacity-80"
+          >
             {/* Ícono SVG carrito */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -117,7 +120,10 @@ export default function Navbar() {
         className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-50 transform transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="p-6 flex h-full flex-col gap-6">
-          <button onClick={() => setOpen(false)} className="self-end text-xl cursor-pointer hover:opacity-70">
+          <button
+            onClick={() => setOpen(false)}
+            className="self-end text-xl cursor-pointer hover:opacity-70"
+          >
             ✕
           </button>
 

@@ -242,10 +242,14 @@ class DeliveryCoverageSettings(models.Model):
         if self.max_delivery_km <= 0:
             raise ValidationError("El limite de cobertura debe ser mayor a 0")
 
-        if self.local_latitude is not None and not (-90 <= float(self.local_latitude) <= 90):
+        if self.local_latitude is not None and not (
+            -90 <= float(self.local_latitude) <= 90
+        ):
             raise ValidationError("La latitud del local debe estar entre -90 y 90")
 
-        if self.local_longitude is not None and not (-180 <= float(self.local_longitude) <= 180):
+        if self.local_longitude is not None and not (
+            -180 <= float(self.local_longitude) <= 180
+        ):
             raise ValidationError("La longitud del local debe estar entre -180 y 180")
 
 
