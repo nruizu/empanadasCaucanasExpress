@@ -272,7 +272,9 @@ export default function AdminOrdersPage() {
             ? order.scheduled_date
             : order.created_at;
 
-      return Boolean(serviceDate) && String(serviceDate).slice(0, 10) === todayDate;
+      return (
+        Boolean(serviceDate) && String(serviceDate).slice(0, 10) === todayDate
+      );
     }).length;
   }, [orders]);
 
