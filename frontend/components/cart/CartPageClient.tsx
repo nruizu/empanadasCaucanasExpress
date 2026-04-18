@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import * as cartApi from "@/lib/cart-api";
+import { getOrderAvailability, type PublicOrderAvailability } from "@/lib/catalog-api";
+import { getBogotaISODate } from "@/lib/colombia-time";
 import CartItem from "./CartItem";
 
 export function emitCartUpdate() {
@@ -17,6 +19,7 @@ export default function CartPageClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [availability, setAvailability] = useState<PublicOrderAvailability | null>(null);
 
   useEffect(() => { setIsClient(true); }, []);
 
@@ -40,6 +43,25 @@ export default function CartPageClient() {
 
     void load();
   }, [token]);
+
+  useEffect(() => {
+    const loadAvailability = async () => {
+      try {
+        const data = await getOrderAvailability();
+        setAvailability(data);
+      } catch {
+        setAvailability(null);
+      }
+    };
+
+    void loadAvailability();
+  }, []);
+
+  const todayRestriction = availability?.restricted_dates?.find(
+    (item) => item.is_active && item.date === getBogotaISODate(),
+  );
+  const ordersDisabledGlobally = availability ? !availability.is_accepting_orders : false;
+  const checkoutBlocked = Boolean(todayRestriction) || ordersDisabledGlobally;
 
   const handleRemove = async (cartProductId: number | string) => {
     if (!cart) return;
@@ -120,7 +142,7 @@ export default function CartPageClient() {
     <main className="min-h-screen bg-[var(--background)] px-4 py-10 md:px-10">
       <div className="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgba(31,92,58,0.08)] md:p-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-[var(--primary)]">Mi pedido</h2>
+          <h2 className="text-2xl font-bold text-[var(--primary)]">Mi carrito</h2>
           {hasProducts && (
             <button
               onClick={handleClearCart}
@@ -147,6 +169,14 @@ export default function CartPageClient() {
             {/* Total y botón checkout */}
             {cart.total_price !== undefined && (
               <div className="mt-6 rounded-xl border border-[color-mix(in_srgb,var(--primary)_14%,white)] bg-[var(--background)] p-4">
+                {checkoutBlocked && (
+                  <div className="mb-4 rounded-lg border border-red-300 bg-red-100 p-3 text-sm font-medium text-red-800">
+                    {ordersDisabledGlobally
+                      ? "No puedes continuar al checkout porque los pedidos están cerrados temporalmente."
+                      : "No puedes continuar al checkout porque hay una restricción activa hoy."}
+                    {!ordersDisabledGlobally && todayRestriction?.reason ? ` Motivo: ${todayRestriction.reason}` : ""}
+                  </div>
+                )}
                 <div className="flex justify-end mb-4">
                   <span className="text-lg font-bold text-[var(--primary)]">
                     Total: ${Number(cart.total_price).toFixed(0)}
@@ -154,8 +184,9 @@ export default function CartPageClient() {
                 </div>
                 <div className="flex justify-end">
                   <button
+                    disabled={checkoutBlocked}
                     onClick={() => void router.push("/checkout")}
-                    className="rounded-lg bg-[var(--accent)] px-6 py-3 font-semibold text-[var(--accent-foreground)] shadow-sm transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_88%,black)]"
+                    className="rounded-lg bg-[var(--accent)] px-6 py-3 font-semibold text-[var(--accent-foreground)] shadow-sm transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_88%,black)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Proceder al checkout
                   </button>

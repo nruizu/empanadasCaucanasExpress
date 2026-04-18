@@ -2,7 +2,7 @@
 
 import CartConfirmModal from "@/components/cart/CartConfirmModal";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import * as cartApi from "@/lib/cart-api";
 
@@ -20,6 +20,13 @@ import {
 import type { CatalogProduct, Category, Product } from "@/types/catalog";
 
 const toNumberPrice = (value: string) => Number(value);
+
+const normalizeSearchText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 
 const extractVariantLabel = (name: string) => {
   const sizeMatch = name.match(/\b(pequeñ[ao]|median[ao]|grande)\b/i);
@@ -102,13 +109,15 @@ const groupProductsWithVariants = (products: Product[]): CatalogProduct[] => {
 };
 
 export default function CatalogPageClient() {
+  const searchParams = useSearchParams();
+  const initialSearch = useMemo(() => (searchParams.get("search") ?? "").trim(), [searchParams]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<CatalogProduct[]>([]);
   const [allProducts, setAllProducts] = useState<CatalogProduct[]>([]);
   const [categoryProducts, setCategoryProducts] = useState<CatalogProduct[]>([]);
   const [selectedCategorySlug, setSelectedCategorySlug] = useState<string | null>(null);
   const [ordering, setOrdering] = useState<"name" | "-name" | "price" | "-price">("name");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [page, setPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -161,6 +170,27 @@ const loadInitialData = useCallback(async () => {
         ordering,
         search,
       });
+
+      const normalizedSearch = normalizeSearchText(search);
+      if (normalizedSearch && data.count === 0) {
+        const fallbackData = await getProducts({
+          page: 1,
+          page_size: 100,
+          ordering,
+        });
+
+        const filteredProducts = fallbackData.results.filter((product) => {
+          const name = normalizeSearchText(product.name);
+          const description = normalizeSearchText(product.description || "");
+          return name.includes(normalizedSearch) || description.includes(normalizedSearch);
+        });
+
+        setAllProducts(groupProductsWithVariants(filteredProducts));
+        setTotalProducts(filteredProducts.length);
+        setError(null);
+        return;
+      }
+
       setAllProducts(groupProductsWithVariants(data.results));
       setTotalProducts(data.count);
       setError(null);
@@ -188,11 +218,16 @@ const loadInitialData = useCallback(async () => {
   }, [loadInitialData]);
 
   useEffect(() => {
+    setSearch((currentSearch) => (currentSearch === initialSearch ? currentSearch : initialSearch));
+    setPage((currentPage) => (currentPage === 1 ? currentPage : 1));
+  }, [initialSearch]);
+
+  useEffect(() => {
     void loadAllProducts();
   }, [page, ordering, search]);
 
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
 const handleAddToCart = async (productId: number, productName: string) => {
   if (!token) { router.push("/login"); return; }
@@ -261,6 +296,23 @@ const handleAddToCart = async (productId: number, productName: string) => {
       </section>
 
       <div className="mx-auto mt-8 flex w-full max-w-6xl flex-col gap-12 px-4 md:px-8">
+        <section className="rounded-2xl border border-[color-mix(in_srgb,var(--primary)_15%,white)] bg-white p-4 shadow-[0_8px_24px_rgba(31,92,58,0.06)]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-[var(--foreground)]">
+              Modo actual: {user?.is_staff ? "Administrador" : token ? "Usuario" : "Invitado"}
+            </p>
+            {user?.is_staff ? (
+              <span className="rounded-full bg-[color-mix(in_srgb,var(--secondary)_40%,white)] px-3 py-1 text-xs font-semibold text-[var(--primary)]">
+                Acceso admin activo
+              </span>
+            ) : (
+              <span className="rounded-full bg-[color-mix(in_srgb,var(--muted)_65%,white)] px-3 py-1 text-xs font-semibold text-[var(--muted-foreground)]">
+                Acceso de cliente
+              </span>
+            )}
+          </div>
+        </section>
+
         <section>
           <SectionTitle title="Productos Destacados" />
           <ProductGrid
@@ -322,8 +374,11 @@ const handleAddToCart = async (productId: number, productName: string) => {
           )}
         </section>
 
-        <section ref={allProductsSectionRef}>
-          <SectionTitle title="Todos los Productos" />
+        <section id="todos-productos" ref={allProductsSectionRef}>
+          <SectionTitle
+            title={search ? `Resultados para "${search}"` : "Todos los Productos"}
+            subtitle={search ? "Estos son los productos que coinciden con tu búsqueda." : undefined}
+          />
           <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <input
               value={search}

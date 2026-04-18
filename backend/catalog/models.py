@@ -42,6 +42,68 @@ class Product(models.Model):
         return self.name
 
 
+class OrderAvailabilityConfig(models.Model):
+    """Configuración global de horarios y avisos de pedidos."""
+
+    singleton_id = models.PositiveSmallIntegerField(
+        primary_key=True,
+        default=1,
+        editable=False,
+    )
+    pickup_weekday_open = models.TimeField(default=time(9, 0))
+    pickup_weekday_close = models.TimeField(default=time(20, 0))
+    pickup_sunday_open = models.TimeField(default=time(8, 0))
+    pickup_sunday_close = models.TimeField(default=time(20, 0))
+    delivery_weekday_open = models.TimeField(default=time(9, 0))
+    delivery_weekday_close = models.TimeField(default=time(19, 30))
+    delivery_sunday_open = models.TimeField(default=time(8, 0))
+    delivery_sunday_close = models.TimeField(default=time(19, 30))
+    is_accepting_orders = models.BooleanField(default=True)
+    order_notice = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuración de horarios"
+        verbose_name_plural = "Configuración de horarios"
+
+    def __str__(self):
+        return "Configuración global de horarios"
+
+    @classmethod
+    def get_solo(cls):
+        config, _ = cls.objects.get_or_create(singleton_id=1)
+        return config
+
+
+class RestrictedDate(models.Model):
+    APPLIES_TO_CHOICES = [
+        ("all", "Todas las modalidades"),
+        ("pickup", "Recoger en sede"),
+        ("delivery", "Domicilio"),
+        ("scheduled", "Programado"),
+    ]
+
+    date = models.DateField()
+    applies_to = models.CharField(max_length=20, choices=APPLIES_TO_CHOICES, default="all")
+    reason = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["date"]
+        verbose_name = "Día restringido"
+        verbose_name_plural = "Días restringidos"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["date", "applies_to"],
+                name="catalog_restricted_date_unique_date_applies_to",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.date} ({self.applies_to})"
+
+
 class Order(models.Model):
     """
     Modelo de Pedido/Orden
@@ -103,9 +165,23 @@ class Order(models.Model):
         return f"Pedido #{self.id} - {self.customer_name}"
 
     @staticmethod
-    def _opening_time_for_weekday(weekday: int) -> time:
-        # Python weekday: Monday=0 ... Sunday=6
-        return time(8, 0) if weekday == 6 else time(9, 0)
+    def _get_pickup_window(config: OrderAvailabilityConfig, weekday: int):
+        if weekday == 6:
+            return config.pickup_sunday_open, config.pickup_sunday_close
+        return config.pickup_weekday_open, config.pickup_weekday_close
+
+    @staticmethod
+    def _get_delivery_window(config: OrderAvailabilityConfig, weekday: int):
+        if weekday == 6:
+            return config.delivery_sunday_open, config.delivery_sunday_close
+        return config.delivery_weekday_open, config.delivery_weekday_close
+
+    @staticmethod
+    def _is_restricted_date(target_date, method: str):
+        return RestrictedDate.objects.filter(
+            date=target_date,
+            is_active=True,
+        ).filter(models.Q(applies_to="all") | models.Q(applies_to=method)).first()
 
     @property
     def estimated_delivery_time(self):
@@ -125,6 +201,29 @@ class Order(models.Model):
                 "El teléfono debe contener solo números (7 a 15 dígitos)"
             )
 
+        config = OrderAvailabilityConfig.get_solo()
+        now_local = timezone.localtime()
+
+        if not config.is_accepting_orders:
+            raise ValidationError("Los pedidos están temporalmente deshabilitados.")
+
+        # Cierre global: si hoy está restringido para "all", no se permiten pedidos
+        # en ninguna modalidad (pickup, delivery o scheduled).
+        global_restriction_today = RestrictedDate.objects.filter(
+            date=now_local.date(),
+            is_active=True,
+            applies_to="all",
+        ).first()
+        if global_restriction_today:
+            reason = (
+                f" Motivo: {global_restriction_today.reason}"
+                if global_restriction_today.reason
+                else ""
+            )
+            raise ValidationError(
+                f"No hay servicio de pedidos para hoy.{reason}"
+            )
+
         # HU 4: Validar horario de recogida en sede.
         # Lunes a sábado: 9:00 AM - 8:00 PM.
         # Domingo: 8:00 AM - 8:00 PM.
@@ -132,22 +231,38 @@ class Order(models.Model):
             if not self.pickup_date or not self.pickup_time:
                 raise ValidationError("Debe especificar fecha y hora de recogida")
 
-            opening_time = self._opening_time_for_weekday(self.pickup_date.weekday())
-            closing_time = time(20, 0)
+            restricted = self._is_restricted_date(self.pickup_date, "pickup")
+            if restricted:
+                reason = f" Motivo: {restricted.reason}" if restricted.reason else ""
+                raise ValidationError(
+                    f"No hay servicio de recogida en sede para la fecha seleccionada.{reason}"
+                )
+
+            opening_time, closing_time = self._get_pickup_window(
+                config,
+                self.pickup_date.weekday(),
+            )
 
             if not (opening_time <= self.pickup_time <= closing_time):
                 if self.pickup_date.weekday() == 6:
                     raise ValidationError(
-                        "El domingo la recogida en sede es de 8:00 AM a 8:00 PM"
+                        "La recogida en sede el domingo está fuera del horario configurado"
                     )
                 raise ValidationError(
-                    "De lunes a sábado la recogida en sede es de 9:00 AM a 8:00 PM"
+                    "La recogida en sede de lunes a sábado está fuera del horario configurado"
                 )
 
         # HU 5: Validar que la fecha programada sea futura
         if self.scheduled_date:
             if self.scheduled_date < timezone.now().date():
                 raise ValidationError("La fecha programada debe ser una fecha futura")
+
+            restricted = self._is_restricted_date(self.scheduled_date, "scheduled")
+            if restricted:
+                reason = f" Motivo: {restricted.reason}" if restricted.reason else ""
+                raise ValidationError(
+                    f"No se permiten pedidos programados para la fecha seleccionada.{reason}"
+                )
 
         # HU Domicilio: validar dirección, modalidad y horario de operación.
         # Lunes a sábado: 9:00 AM - 7:30 PM.
@@ -167,18 +282,26 @@ class Order(models.Model):
                     "La dirección de entrega debe incluir texto y numeración"
                 )
 
-            now_local = timezone.localtime()
-            opening_time = self._opening_time_for_weekday(now_local.weekday())
-            closing_time = time(19, 30)
+            restricted = self._is_restricted_date(now_local.date(), "delivery")
+            if restricted:
+                reason = f" Motivo: {restricted.reason}" if restricted.reason else ""
+                raise ValidationError(
+                    f"No hay servicio de domicilio para hoy.{reason}"
+                )
+
+            opening_time, closing_time = self._get_delivery_window(
+                config,
+                now_local.weekday(),
+            )
             now_time = now_local.time()
 
             if not (opening_time <= now_time <= closing_time):
                 if now_local.weekday() == 6:
                     raise ValidationError(
-                        "El domicilio opera los domingos de 8:00 AM a 7:30 PM"
+                        "El domicilio del domingo está fuera del horario configurado"
                     )
                 raise ValidationError(
-                    "El domicilio opera de lunes a sábado de 9:00 AM a 7:30 PM"
+                    "El domicilio de lunes a sábado está fuera del horario configurado"
                 )
 
 

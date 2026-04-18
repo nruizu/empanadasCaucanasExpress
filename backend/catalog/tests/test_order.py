@@ -3,7 +3,7 @@ from django.utils import timezone
 from datetime import timedelta, time
 from django.core.exceptions import ValidationError
 from unittest.mock import patch
-from backend.catalog.models import Order
+from backend.catalog.models import Order, OrderAvailabilityConfig, RestrictedDate
 
 
 class HU4_PickupOrderTests(TestCase):
@@ -165,6 +165,47 @@ class HU_DeliveryOrderTests(TestCase):
     def test_delivery_rechaza_fuera_de_horario(self, mock_localtime):
         """Debe rechazar domicilio luego de las 7:30 PM"""
         mock_localtime.return_value = timezone.datetime(2026, 4, 14, 19, 45)  # Martes
+
+        order = Order(
+            customer_name="Carlos",
+            customer_phone="987654321",
+            delivery_method="delivery",
+            delivery_address="Calle 10 # 20-30, El Retiro",
+        )
+
+        with self.assertRaises(ValidationError):
+            order.full_clean()
+
+
+class OrderAvailabilityConfigTests(TestCase):
+    def test_pickup_restricted_date_blocks_order(self):
+        target_date = timezone.now().date() + timedelta(days=1)
+        RestrictedDate.objects.create(
+            date=target_date,
+            applies_to="pickup",
+            reason="Mantenimiento en sede",
+            is_active=True,
+        )
+
+        order = Order(
+            customer_name="Luisa",
+            customer_phone="3123456789",
+            delivery_method="pickup",
+            pickup_date=target_date,
+            pickup_time=time(10, 0),
+        )
+
+        with self.assertRaises(ValidationError):
+            order.full_clean()
+
+    @patch("backend.catalog.models.timezone.localtime")
+    def test_delivery_uses_configured_schedule(self, mock_localtime):
+        config = OrderAvailabilityConfig.get_solo()
+        config.delivery_weekday_open = time(10, 0)
+        config.delivery_weekday_close = time(18, 0)
+        config.save()
+
+        mock_localtime.return_value = timezone.datetime(2026, 4, 14, 9, 30)  # Martes
 
         order = Order(
             customer_name="Carlos",

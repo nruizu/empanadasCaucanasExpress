@@ -11,6 +11,7 @@ export default function Navbar() {
   const { token, user, logout } = useAuth();
   const [cartCount, setCartCount] = useState<number>(0);
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const tokenRef = useRef(token);
   useEffect(() => { tokenRef.current = token; }, [token]);
@@ -44,10 +45,20 @@ export default function Navbar() {
     router.push("/");
   };
 
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) {
+      router.push("/");
+      return;
+    }
+    router.push(`/?search=${encodeURIComponent(query)}#todos-productos`);
+  };
+
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-30 h-20 bg-[var(--primary)] px-4 text-white shadow-md md:px-6">
-        <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between">
+        <div className="mx-auto grid h-full w-full max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-2">
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -59,18 +70,58 @@ export default function Navbar() {
             </svg>
           </button>
 
-          <Link href="/" className="text-center text-lg font-semibold tracking-wide sm:text-xl">
-            Empanadas Caucanas <span className="text-[var(--secondary)]">Express</span>
+          <Link href="/" className="mx-auto flex min-w-0 items-center gap-2 sm:gap-3">
+            <img
+              src="/logo.png"
+              alt="Empanadas Caucanas"
+              className="h-12 w-auto object-contain sm:h-14"
+            />
+            <span className="truncate text-lg font-semibold tracking-wide sm:text-xl md:text-2xl">
+              Empanadas Caucanas <span className="text-[var(--secondary)]">Express</span>
+            </span>
           </Link>
 
-          <div className="flex items-center gap-2">
-            <Link href="/" aria-label="Ir al inicio" className="hidden rounded-md p-1 transition-colors hover:bg-white/10 sm:block">
-              <img
-                src="/logo.png"
-                alt="Empanadas Caucanas"
-                className="h-16 w-auto object-contain"
+          <div className="flex items-center justify-end gap-1 sm:gap-2">
+            <form
+              onSubmit={handleSearch}
+              className="hidden items-center rounded-full border border-white/25 bg-white/10 pl-2 pr-1 backdrop-blur-sm sm:flex"
+              role="search"
+              aria-label="Buscar productos"
+            >
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Buscar productos"
+                className="w-28 bg-transparent py-1.5 text-sm text-white placeholder:text-white/80 outline-none md:w-40"
               />
-            </Link>
+              <button
+                type="submit"
+                className="rounded-full p-2 transition-colors hover:bg-white/20"
+                aria-label="Buscar productos"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35" />
+                  <circle cx="11" cy="11" r="6" />
+                </svg>
+              </button>
+            </form>
+
+            <button
+              type="button"
+              onClick={() => {
+                const query = window.prompt("Buscar productos", searchQuery)?.trim() ?? "";
+                setSearchQuery(query);
+                router.push(query ? `/?search=${encodeURIComponent(query)}#todos-productos` : "/");
+              }}
+              className="rounded-lg p-2.5 transition-colors hover:bg-white/10 sm:hidden"
+              aria-label="Buscar productos"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35" />
+                <circle cx="11" cy="11" r="6" />
+              </svg>
+            </button>
+
             {token ? (
               <Link href="/carrito" className="relative rounded-lg p-2.5 transition-colors hover:bg-white/10" aria-label="Ir al carrito">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -115,12 +166,22 @@ export default function Navbar() {
             </Link>
             {token && (
               <Link href="/carrito" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
+                Mi carrito
+              </Link>
+            )}
+            {token && (
+              <Link href="/mi-pedido" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
                 Mi pedido
               </Link>
             )}
             {token && user?.is_staff && (
               <Link href="/admin/catalogo" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
                 Gestión catálogo
+              </Link>
+            )}
+            {token && user?.is_staff && (
+              <Link href="/admin/horarios" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
+                Gestión horarios
               </Link>
             )}
 

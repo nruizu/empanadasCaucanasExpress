@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import CatalogPageClient from "@/components/catalog/CatalogPageClient";
 
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function CatalogPage() {
-  return <CatalogPageClient />;
+  return (
+    <Suspense fallback={null}>
+      <CatalogPageClient />
+    </Suspense>
+  );
 }

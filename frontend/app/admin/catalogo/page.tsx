@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
@@ -211,10 +212,20 @@ export default function AdminCatalogPage() {
     <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-8 md:px-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <section className="rounded-xl bg-white p-6 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-          <h1 className="text-2xl font-bold text-[var(--cce-green-dark)]">Gestión de catálogo</h1>
-          <p className="mt-1 text-sm text-[var(--cce-text-muted)]">
-            Crea, edita y elimina productos visibles para clientes.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h1 className="text-2xl font-bold text-[var(--cce-green-dark)]">Gestión de catálogo</h1>
+              <p className="mt-1 text-sm text-[var(--cce-text-muted)]">
+                Crea, edita y elimina productos visibles para clientes.
+              </p>
+            </div>
+            <Link
+              href="/admin/horarios"
+              className="rounded-full border border-[var(--cce-green-dark)] px-4 py-2 text-sm font-semibold text-[var(--cce-green-dark)]"
+            >
+              Ir a gestión de horarios
+            </Link>
+          </div>
 
           {error && (
             <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

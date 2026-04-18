@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Category, Product, Order, OrderItem
+from .models import (
+    Category,
+    Product,
+    Order,
+    OrderItem,
+    OrderAvailabilityConfig,
+    RestrictedDate,
+)
 
 
 @admin.register(Category)
@@ -68,3 +75,21 @@ class OrderItemAdmin(admin.ModelAdmin):
     list_display = ("order", "product", "quantity", "unit_price", "subtotal")
     list_filter = ("order__status",)
     search_fields = ("order__customer_name", "product__name")
+
+
+@admin.register(OrderAvailabilityConfig)
+class OrderAvailabilityConfigAdmin(admin.ModelAdmin):
+    list_display = (
+        "pickup_weekday_open",
+        "pickup_weekday_close",
+        "delivery_weekday_open",
+        "delivery_weekday_close",
+        "updated_at",
+    )
+
+
+@admin.register(RestrictedDate)
+class RestrictedDateAdmin(admin.ModelAdmin):
+    list_display = ("date", "applies_to", "is_active", "reason")
+    list_filter = ("applies_to", "is_active")
+    search_fields = ("reason",)

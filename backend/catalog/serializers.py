@@ -1,5 +1,12 @@
 from rest_framework import serializers
-from .models import Category, Product, Order, OrderItem
+from .models import (
+    Category,
+    Product,
+    Order,
+    OrderItem,
+    OrderAvailabilityConfig,
+    RestrictedDate,
+)
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -113,3 +120,54 @@ class OrderSerializer(serializers.ModelSerializer):
         instance = Order(**data)
         instance.clean()  # Esto ejecuta las validaciones de HU 4 y 5
         return data
+
+
+class RestrictedDateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RestrictedDate
+        fields = ("id", "date", "applies_to", "reason", "is_active", "created_at")
+        read_only_fields = ("id", "created_at")
+
+
+class OrderAvailabilityConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderAvailabilityConfig
+        fields = (
+            "pickup_weekday_open",
+            "pickup_weekday_close",
+            "pickup_sunday_open",
+            "pickup_sunday_close",
+            "delivery_weekday_open",
+            "delivery_weekday_close",
+            "delivery_sunday_open",
+            "delivery_sunday_close",
+            "is_accepting_orders",
+            "order_notice",
+            "updated_at",
+        )
+        read_only_fields = ("updated_at",)
+
+
+class PublicOrderAvailabilitySerializer(serializers.ModelSerializer):
+    restricted_dates = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrderAvailabilityConfig
+        fields = (
+            "pickup_weekday_open",
+            "pickup_weekday_close",
+            "pickup_sunday_open",
+            "pickup_sunday_close",
+            "delivery_weekday_open",
+            "delivery_weekday_close",
+            "delivery_sunday_open",
+            "delivery_sunday_close",
+            "is_accepting_orders",
+            "order_notice",
+            "restricted_dates",
+            "updated_at",
+        )
+
+    def get_restricted_dates(self, _obj):
+        queryset = RestrictedDate.objects.filter(is_active=True).order_by("date")
+        return RestrictedDateSerializer(queryset, many=True).data

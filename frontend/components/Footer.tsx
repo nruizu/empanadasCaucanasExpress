@@ -16,7 +16,8 @@ export default function Footer() {
             <div className="mt-3 space-y-2 text-sm text-white/80">
               <p>El Retiro, Antioquia, Colombia</p>
               <p>+57 300 123 4567</p>
-              <p>Lun - Dom: 8:00 AM - 8:00 PM</p>
+              <p>Lun - Sáb: 9:00 AM - 8:00 PM</p>
+              <p>Dom: 8:00 AM - 8:00 PM</p>
             </div>
           </div>
         </div>

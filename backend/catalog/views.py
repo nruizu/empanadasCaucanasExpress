@@ -1,13 +1,16 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, generics
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import AllowAny, IsAdminUser
 
-from .models import Category, Product, Order
+from .models import Category, Product, Order, OrderAvailabilityConfig, RestrictedDate
 from .serializers import (
     CategorySerializer,
+    OrderAvailabilityConfigSerializer,
     ProductAdminSerializer,
     ProductSerializer,
+    PublicOrderAvailabilitySerializer,
+    RestrictedDateSerializer,
     OrderSerializer,
 )
 
@@ -132,3 +135,32 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     serializer_class = OrderSerializer
     queryset = Order.objects.prefetch_related("items__product").all()
+
+
+class AdminOrderAvailabilityConfigView(generics.RetrieveUpdateAPIView):
+    serializer_class = OrderAvailabilityConfigSerializer
+    permission_classes = (IsAdminUser,)
+
+    def get_object(self):
+        return OrderAvailabilityConfig.get_solo()
+
+
+class AdminRestrictedDateListCreateView(generics.ListCreateAPIView):
+    serializer_class = RestrictedDateSerializer
+    permission_classes = (IsAdminUser,)
+    queryset = RestrictedDate.objects.all().order_by("date")
+    pagination_class = None
+
+
+class AdminRestrictedDateDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = RestrictedDateSerializer
+    permission_classes = (IsAdminUser,)
+    queryset = RestrictedDate.objects.all()
+
+
+class PublicOrderAvailabilityView(generics.RetrieveAPIView):
+    serializer_class = PublicOrderAvailabilitySerializer
+    permission_classes = (AllowAny,)
+
+    def get_object(self):
+        return OrderAvailabilityConfig.get_solo()
