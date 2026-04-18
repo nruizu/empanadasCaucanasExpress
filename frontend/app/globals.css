@@ -1,24 +1,44 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4e8d6;
-  --foreground: #1f4d3a;
-  --cce-green-dark: #1f4d3a;
-  --cce-mustard: #f4b400;
-  --cce-pink: #d63384;
-  --cce-beige: #f4e8d6;
-  --cce-text-muted: #49685b;
+  --background: #fffcf5;
+  --foreground: #1f2823;
+  --card: #ffffff;
+  --card-foreground: #1f2823;
+  --primary: #1f5c3a;
+  --primary-foreground: #ffffff;
+  --secondary: #f4c430;
+  --secondary-foreground: #1f2823;
+  --accent: #e9a209;
+  --accent-foreground: #1f2823;
+  --muted: #f3eedc;
+  --muted-foreground: #6b7566;
+  --border: rgba(31, 92, 58, 0.15);
+  --ring: #f4c430;
+  --radius: 0.75rem;
+  --font-size: 16px;
+
+  --cce-green-dark: #1f5c3a;
+  --cce-mustard: #f4c430;
+  --cce-beige: #fffcf5;
+  --cce-text-muted: #6b7566;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html {
+  font-size: var(--font-size);
 }
 
 body {
-  background-color: var(--cce-beige);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+button,
+label {
+  font-weight: 600;
 }

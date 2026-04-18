@@ -30,15 +30,44 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[var(--cce-beige)]">
-      <form onSubmit={handleSubmit} className="w-full max-w-md bg-white p-6 rounded-lg">
-        <h2 className="text-xl font-semibold mb-4">Registro</h2>
-        {error && <div className="text-red-600 mb-2">{error}</div>}
-        <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Usuario" className="w-full mb-2 p-2 border rounded" />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (opcional)" className="w-full mb-2 p-2 border rounded" />
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña" className="w-full mb-4 p-2 border rounded" />
-        <button className="w-full rounded bg-[var(--cce-green-dark)] text-white py-2">Crear cuenta</button>
-      </form>
+    <main className="min-h-screen bg-[var(--background)] px-4 py-10 md:px-10">
+      <div className="mx-auto flex max-w-5xl items-center justify-center">
+        <form
+          onSubmit={handleSubmit}
+          className="w-full max-w-md rounded-2xl bg-white p-7 shadow-[0_8px_30px_rgba(31,92,58,0.08)]"
+        >
+          <h2 className="text-2xl font-bold text-[var(--primary)]">Crear cuenta</h2>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">Regístrate para guardar tu pedido y comprar más rápido.</p>
+
+          {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+          <div className="mt-5 space-y-4">
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Usuario"
+              className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2.5 outline-none focus:border-[var(--primary)]"
+            />
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email (opcional)"
+              className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2.5 outline-none focus:border-[var(--primary)]"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Contraseña"
+              className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2.5 outline-none focus:border-[var(--primary)]"
+            />
+          </div>
+
+          <button className="mt-5 w-full rounded-lg bg-[var(--primary)] py-2.5 font-semibold text-white transition-colors hover:bg-[color-mix(in_srgb,var(--primary)_90%,black)]">
+            Crear cuenta
+          </button>
+        </form>
+      </div>
     </main>
   );
 }

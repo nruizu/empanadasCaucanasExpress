@@ -2,6 +2,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import time
+import re
 
 
 class Category(models.Model):
@@ -101,21 +102,46 @@ class Order(models.Model):
     def __str__(self):
         return f"Pedido #{self.id} - {self.customer_name}"
 
+    @staticmethod
+    def _opening_time_for_weekday(weekday: int) -> time:
+        # Python weekday: Monday=0 ... Sunday=6
+        return time(8, 0) if weekday == 6 else time(9, 0)
+
+    @property
+    def estimated_delivery_time(self):
+        if self.delivery_method != "delivery":
+            return None
+        return "45-60 minutos"
+
     def clean(self):
         """
         Validaciones personalizadas
         """
         super().clean()
 
-        # HU 4: Validar horario de recogida en sede
-        if self.delivery_method == "pickup" and self.pickup_time:
-            # Horario de atención: 8:00 AM - 8:00 PM
-            opening_time = time(8, 0)
+        phone = (self.customer_phone or "").strip()
+        if not re.fullmatch(r"\d{7,15}", phone):
+            raise ValidationError(
+                "El teléfono debe contener solo números (7 a 15 dígitos)"
+            )
+
+        # HU 4: Validar horario de recogida en sede.
+        # Lunes a sábado: 9:00 AM - 8:00 PM.
+        # Domingo: 8:00 AM - 8:00 PM.
+        if self.delivery_method == "pickup":
+            if not self.pickup_date or not self.pickup_time:
+                raise ValidationError("Debe especificar fecha y hora de recogida")
+
+            opening_time = self._opening_time_for_weekday(self.pickup_date.weekday())
             closing_time = time(20, 0)
 
             if not (opening_time <= self.pickup_time <= closing_time):
+                if self.pickup_date.weekday() == 6:
+                    raise ValidationError(
+                        "El domingo la recogida en sede es de 8:00 AM a 8:00 PM"
+                    )
                 raise ValidationError(
-                    "La hora de recogida debe estar entre 8:00 AM y 8:00 PM"
+                    "De lunes a sábado la recogida en sede es de 9:00 AM a 8:00 PM"
                 )
 
         # HU 5: Validar que la fecha programada sea futura
@@ -123,10 +149,37 @@ class Order(models.Model):
             if self.scheduled_date < timezone.now().date():
                 raise ValidationError("La fecha programada debe ser una fecha futura")
 
-        # Validar que si es pickup, tenga fecha y hora
-        if self.delivery_method == "pickup":
-            if not self.pickup_date or not self.pickup_time:
-                raise ValidationError("Debe especificar fecha y hora de recogida")
+        # HU Domicilio: validar dirección, modalidad y horario de operación.
+        # Lunes a sábado: 9:00 AM - 7:30 PM.
+        # Domingo: 8:00 AM - 7:30 PM.
+        if self.delivery_method == "delivery":
+            address = (self.delivery_address or "").strip()
+            if not address:
+                raise ValidationError("Debe ingresar una dirección para el domicilio")
+
+            if len(address) < 10:
+                raise ValidationError("La dirección de entrega es demasiado corta")
+
+            if not re.search(r"\d", address) or not re.search(
+                r"[A-Za-zÁÉÍÓÚáéíóúÑñ]", address
+            ):
+                raise ValidationError(
+                    "La dirección de entrega debe incluir texto y numeración"
+                )
+
+            now_local = timezone.localtime()
+            opening_time = self._opening_time_for_weekday(now_local.weekday())
+            closing_time = time(19, 30)
+            now_time = now_local.time()
+
+            if not (opening_time <= now_time <= closing_time):
+                if now_local.weekday() == 6:
+                    raise ValidationError(
+                        "El domicilio opera los domingos de 8:00 AM a 7:30 PM"
+                    )
+                raise ValidationError(
+                    "El domicilio opera de lunes a sábado de 9:00 AM a 7:30 PM"
+                )
 
 
 class OrderItem(models.Model):

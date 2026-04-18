@@ -24,6 +24,7 @@ export interface ProductVariant {
   price: string;
   image: string;
   label: string;
+  description: string;
 }
 
 export interface CatalogProduct {

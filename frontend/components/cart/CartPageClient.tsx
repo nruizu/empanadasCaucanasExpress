@@ -73,30 +73,58 @@ export default function CartPageClient() {
     }
   };
 
-  if (!isClient) return <div>Loading...</div> as any;
+  if (!isClient) {
+    return (
+      <main className="min-h-screen bg-[var(--background)] px-4 py-10 md:px-10">
+        <div className="mx-auto max-w-3xl rounded-2xl bg-white p-6 text-center text-[var(--muted-foreground)] shadow-md">
+          Cargando carrito...
+        </div>
+      </main>
+    ) as any;
+  }
 
   if (!token) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
-        <div className="p-6 bg-white rounded">Debes iniciar sesión para ver tu carrito.</div>
+      <main className="min-h-screen bg-[var(--background)] px-4 py-10 md:px-10">
+        <div className="mx-auto max-w-2xl rounded-2xl bg-white p-8 text-center shadow-md">
+          <h2 className="text-xl font-bold text-[var(--primary)]">Tu carrito te está esperando</h2>
+          <p className="mt-2 text-sm text-[var(--muted-foreground)]">Debes iniciar sesión para ver tus productos y continuar con el pedido.</p>
+        </div>
       </main>
     );
   }
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div className="text-red-600">{error}</div>;
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[var(--background)] px-4 py-10 md:px-10">
+        <div className="mx-auto max-w-3xl rounded-2xl bg-white p-6 text-center text-[var(--muted-foreground)] shadow-md">
+          Cargando carrito...
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-[var(--background)] px-4 py-10 md:px-10">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-700 shadow-sm">
+          {error}
+        </div>
+      </main>
+    );
+  }
 
   const hasProducts = cart?.products?.length > 0;
 
   return (
-    <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
-      <div className="mx-auto max-w-3xl bg-white p-6 rounded">
+    <main className="min-h-screen bg-[var(--background)] px-4 py-10 md:px-10">
+      <div className="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgba(31,92,58,0.08)] md:p-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Mi carrito</h2>
+          <h2 className="text-2xl font-bold text-[var(--primary)]">Mi pedido</h2>
           {hasProducts && (
             <button
               onClick={handleClearCart}
-              className="text-sm text-red-500 hover:underline"
+              className="rounded-md px-2 py-1 text-sm text-red-600 transition-colors hover:bg-red-50"
             >
               Vaciar carrito
             </button>
@@ -118,16 +146,16 @@ export default function CartPageClient() {
 
             {/* Total y botón checkout */}
             {cart.total_price !== undefined && (
-              <div className="mt-6 border-t pt-4">
+              <div className="mt-6 rounded-xl border border-[color-mix(in_srgb,var(--primary)_14%,white)] bg-[var(--background)] p-4">
                 <div className="flex justify-end mb-4">
-                  <span className="text-lg font-semibold">
+                  <span className="text-lg font-bold text-[var(--primary)]">
                     Total: ${Number(cart.total_price).toFixed(0)}
                   </span>
                 </div>
                 <div className="flex justify-end">
                   <button
                     onClick={() => void router.push("/checkout")}
-                    className="bg-[var(--cce-pink)] text-white px-6 py-3 rounded hover:opacity-90"
+                    className="rounded-lg bg-[var(--accent)] px-6 py-3 font-semibold text-[var(--accent-foreground)] shadow-sm transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_88%,black)]"
                   >
                     Proceder al checkout
                   </button>
@@ -136,7 +164,9 @@ export default function CartPageClient() {
             )}
           </>
         ) : (
-          <div>No hay productos en el carrito.</div>
+          <div className="rounded-xl border border-dashed border-[color-mix(in_srgb,var(--primary)_20%,white)] bg-[var(--background)] p-8 text-center text-[var(--muted-foreground)]">
+            No hay productos en el carrito.
+          </div>
         )}
       </div>
     </main>

@@ -82,6 +82,7 @@ class OrderSerializer(serializers.ModelSerializer):
     """
 
     items = OrderItemSerializer(many=True, read_only=True)
+    estimated_delivery_time = serializers.CharField(read_only=True)
 
     class Meta:
         model = Order
@@ -96,6 +97,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "pickup_time",
             "scheduled_date",
             "delivery_address",
+            "estimated_delivery_time",
             "notes",
             "total_amount",
             "items",
