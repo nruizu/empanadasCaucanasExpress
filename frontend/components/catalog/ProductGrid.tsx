@@ -7,7 +7,11 @@ interface ProductGridProps {
   onAddToCart?: (productId: number, productName: string) => void;
 }
 
-export default function ProductGrid({ products, emptyMessage, onAddToCart }: ProductGridProps) {
+export default function ProductGrid({
+  products,
+  emptyMessage,
+  onAddToCart,
+}: ProductGridProps) {
   if (!products.length) {
     return (
       <div className="rounded-2xl bg-white p-8 text-center text-sm text-[var(--cce-text-muted)] shadow-[0_8px_30px_rgba(31,77,58,0.09)]">

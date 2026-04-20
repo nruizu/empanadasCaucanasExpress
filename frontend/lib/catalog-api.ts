@@ -5,10 +5,14 @@ import type {
   ProductFilters,
 } from "@/types/catalog";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 class ApiError extends Error {
-  constructor(message: string, public status: number) {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
     super(message);
     this.name = "ApiError";
   }
@@ -67,11 +71,14 @@ const toArrayResponse = <T>(payload: T[] | PaginatedResponse<T>): T[] => {
 };
 
 export const getCategories = async () => {
-  const response = await request<Category[] | PaginatedResponse<Category>>("/categories/");
+  const response = await request<Category[] | PaginatedResponse<Category>>(
+    "/categories/",
+  );
   return toArrayResponse(response);
 };
 
-export const getFeaturedProducts = () => request<Product[]>("/products/featured/");
+export const getFeaturedProducts = () =>
+  request<Product[]>("/products/featured/");
 
 export const getProducts = (filters?: ProductFilters) =>
   request<PaginatedResponse<Product>>("/products/", toQueryParams(filters));

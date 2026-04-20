@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "catalog",
     "backend.cart",
     "backend.login",
+    "backend.report",
 ]
 
 MIDDLEWARE = [
@@ -170,3 +171,24 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.AllowAny",
     ],
 }
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "delivery-geocoding-cache",
+    }
+}
+
+DELIVERY_DEFAULT_CITY = env("DELIVERY_DEFAULT_CITY", default="Popayan")
+DELIVERY_DEFAULT_REGION = env("DELIVERY_DEFAULT_REGION", default="Cauca")
+DELIVERY_DEFAULT_COUNTRY = env("DELIVERY_DEFAULT_COUNTRY", default="Colombia")
+NOMINATIM_GEOCODE_URL = env(
+    "NOMINATIM_GEOCODE_URL",
+    default="https://nominatim.openstreetmap.org/search",
+)
+NOMINATIM_COUNTRY_CODE = env("NOMINATIM_COUNTRY_CODE", default="co")
+NOMINATIM_TIMEOUT_SECONDS = env.int("NOMINATIM_TIMEOUT_SECONDS", default=6)
+NOMINATIM_USER_AGENT = env(
+    "NOMINATIM_USER_AGENT",
+    default="empanadas-caucanas-express/1.0 (delivery-validation)",
+)

@@ -16,3 +16,7 @@ Pillow>=11.0
 black==26.1.0
 flake8>=3.9.2
 bandit==1.9.3
+numpy>=2.1
+matplotlib>=3.9
+seaborn>=0.13
+twilio

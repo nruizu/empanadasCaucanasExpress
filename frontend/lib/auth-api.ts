@@ -1,18 +1,100 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+
+export interface MeResponse {
+  user_id: number;
+  username: string;
+  email: string;
+  is_staff: boolean;
+  full_name: string;
+  phone: string;
+  address: string;
+  delivery_local_address?: string;
+  delivery_city?: string;
+  delivery_region?: string;
+}
+
+export interface OrderHistoryItem {
+  id: number;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string | null;
+  delivery_method: "pickup" | "delivery" | "scheduled";
+  status:
+    | "pending"
+    | "confirmed"
+    | "preparing"
+    | "ready"
+    | "completed"
+    | "cancelled";
+  pickup_date: string | null;
+  pickup_time: string | null;
+  scheduled_date: string | null;
+  delivery_address: string | null;
+  delivery_latitude?: string | null;
+  delivery_longitude?: string | null;
+  delivery_distance_km?: string | null;
+  address_validation_status?:
+    | "not_validated"
+    | "valid"
+    | "invalid"
+    | "out_of_coverage"
+    | "service_error";
+  address_validation_message?: string;
+  delivery_maps_url?: string;
+  notes: string | null;
+  total_amount: string;
+  created_at: string;
+  updated_at: string;
+  items: OrderHistoryLineItem[];
+}
+
+export interface OrderHistoryLineItem {
+  id: number;
+  quantity: number;
+  unit_price: string;
+  subtotal: string;
+  product: {
+    id: number;
+    name: string;
+    slug: string;
+    description: string;
+    price: string;
+    image: string;
+    is_featured: boolean;
+    category: {
+      id: number;
+      name: string;
+      slug: string;
+      image: string;
+    };
+  };
+}
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
 
 async function request(path: string, options: RequestInit = {}) {
+  const { headers, ...restOptions } = options;
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
+    ...restOptions,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...(headers || {}),
     },
-    ...options,
   });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     // Si tiene campos de validación (password, username, etc), lanza el objeto completo
-    const hasFieldErrors = Object.keys(body).some((k) => k !== "detail" && k !== "error");
+    const hasFieldErrors = Object.keys(body).some(
+      (k) => k !== "detail" && k !== "error",
+    );
     if (hasFieldErrors) throw body;
     throw new Error(body.detail || body.error || res.statusText);
   }
@@ -20,11 +102,32 @@ async function request(path: string, options: RequestInit = {}) {
   return res.json().catch(() => ({}));
 }
 
-export async function register({ username, password, email }: { username: string; password: string; email?: string }) {
+export async function register({
+  username,
+  password,
+  email,
+  full_name,
+  phone,
+  address,
+}: {
+  username: string;
+  password: string;
+  email: string;
+  full_name: string;
+  phone: string;
+  address: string;
+}) {
   const res = await fetch(`${API_BASE_URL}/auth/registro/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password, email }),
+    body: JSON.stringify({
+      username,
+      password,
+      email,
+      full_name,
+      phone,
+      address,
+    }),
   });
 
   const data = await res.json();
@@ -37,7 +140,7 @@ export async function register({ username, password, email }: { username: string
 }
 
 export const login = (payload: { username: string; password: string }) =>
-  request('/auth/login/', { method: 'POST', body: JSON.stringify(payload) });
+  request("/auth/login/", { method: "POST", body: JSON.stringify(payload) });
 
 export async function logout(token: string) {
   return fetch(`${API_BASE_URL}/auth/logout/`, {
@@ -49,12 +152,61 @@ export async function logout(token: string) {
 }
 
 export async function me(token: string) {
-  return request('/auth/me/', {
-    method: 'GET',
+  return request("/auth/me/", {
+    method: "GET",
     headers: {
       Authorization: `Token ${token}`,
     },
   });
 }
 
-export default { register, login, logout, me };
+export async function updateMe(
+  token: string,
+  payload: {
+    email?: string;
+    full_name?: string;
+    phone?: string;
+    address?: string;
+    delivery_local_address?: string;
+    delivery_city?: string;
+    delivery_region?: string;
+  },
+) {
+  return request("/auth/me/", {
+    method: "PATCH",
+    headers: {
+      Authorization: `Token ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function myOrderHistory(token: string) {
+  return request("/report/orders/me/", {
+    method: "GET",
+    headers: {
+      Authorization: `Token ${token}`,
+    },
+  }) as Promise<PaginatedResponse<OrderHistoryItem>>;
+}
+
+export async function cancelMyOrder(token: string, orderId: number) {
+  return request(`/report/orders/me/${orderId}/cancel/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Token ${token}`,
+    },
+  }) as Promise<OrderHistoryItem>;
+}
+
+const authApi = {
+  register,
+  login,
+  logout,
+  me,
+  updateMe,
+  myOrderHistory,
+  cancelMyOrder,
+};
+
+export default authApi;
