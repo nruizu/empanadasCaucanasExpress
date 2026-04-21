@@ -4,7 +4,10 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from backend.catalog.models import DeliveryCoverageSettings
-from backend.catalog.services.delivery_geo import validate_delivery_address
+from backend.catalog.services.delivery_geo import (
+    build_address_queries,
+    validate_delivery_address,
+)
 
 
 class DeliveryCityRuleTests(TestCase):
@@ -44,3 +47,10 @@ class DeliveryCityRuleTests(TestCase):
 
         self.assertEqual(result.status, "valid")
         self.assertIsNotNone(result.distance_km)
+
+    def test_build_address_queries_keeps_medellin_fallback_for_comma_addresses(self):
+        queries = build_address_queries("Calle 4 Sur #48-110, Vegas del Poblado")
+
+        self.assertIn("Calle 4 Sur #48-110, Vegas del Poblado", queries)
+        self.assertIn("Calle 4 Sur 48-110, Medellin, Antioquia, Colombia", queries)
+        self.assertIn("Calle 4 Sur #48-110, Medellin, Antioquia, Colombia", queries)

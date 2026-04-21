@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.conf import settings
 from django.utils import timezone
 from datetime import time
 import re
@@ -37,6 +38,38 @@ class Product(models.Model):
     class Meta:
         # When the model is used, django order search by name
         ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class DeliveryCoverageSettings(models.Model):
+    name = models.CharField(max_length=120, default="Cobertura principal")
+    local_address = models.CharField(max_length=255)
+    local_city = models.CharField(max_length=120)
+    local_region = models.CharField(max_length=120, blank=True)
+    local_country = models.CharField(max_length=120, default="Colombia")
+    local_reference = models.CharField(max_length=255, blank=True)
+    local_latitude = models.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+    )
+    local_longitude = models.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+    )
+    max_delivery_km = models.DecimalField(max_digits=6, decimal_places=2)
+    is_enabled = models.BooleanField(default=True)
+    coverage_note = models.CharField(max_length=255, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuracion de cobertura"
+        verbose_name_plural = "Configuracion de cobertura"
 
     def __str__(self) -> str:
         return self.name
@@ -129,6 +162,25 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="orders",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="created_orders",
+    )
+    order_source = models.CharField(
+        max_length=20,
+        choices=[("online", "Online"), ("manual", "Manual")],
+        default="online",
+    )
 
     # Información del cliente
     customer_name = models.CharField(max_length=200)
@@ -149,6 +201,37 @@ class Order(models.Model):
 
     # Dirección (si es delivery)
     delivery_address = models.TextField(blank=True, null=True)
+    address_validation_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("not_validated", "No validada"),
+            ("valid", "Valida"),
+            ("invalid", "Invalida"),
+            ("out_of_coverage", "Fuera de cobertura"),
+            ("service_error", "Error de servicio"),
+        ],
+        default="not_validated",
+    )
+    address_validation_message = models.CharField(max_length=255, blank=True)
+    delivery_latitude = models.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+    )
+    delivery_longitude = models.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+    )
+    delivery_distance_km = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        blank=True,
+        null=True,
+    )
+    delivery_maps_url = models.URLField(max_length=500, blank=True)
 
     # Notas adicionales
     notes = models.TextField(blank=True, null=True)
@@ -263,6 +346,8 @@ class Order(models.Model):
                 raise ValidationError(
                     f"No se permiten pedidos programados para la fecha seleccionada.{reason}"
                 )
+        elif self.delivery_method == "scheduled":
+            raise ValidationError("Debe especificar una fecha para el pedido programado")
 
         # HU Domicilio: validar dirección, modalidad y horario de operación.
         # Lunes a sábado: 9:00 AM - 7:30 PM.

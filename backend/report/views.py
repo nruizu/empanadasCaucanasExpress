@@ -1,22 +1,251 @@
-from datetime import timedelta
+from datetime import date, timedelta
 import base64
 import io
 import matplotlib
 import numpy as np
 import seaborn as sns
+from decimal import Decimal
+
+from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum, Value
 from django.shortcuts import get_object_or_404
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
-from rest_framework import generics, status
+from rest_framework import generics, serializers, status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from matplotlib import pyplot as plt
-from backend.catalog.models import Order, OrderItem
+from backend.catalog.models import Order, OrderItem, Product
 from backend.catalog.serializers import OrderSerializer
 
 matplotlib.use("Agg")
+
+
+class SalesPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+class ManualSaleItemSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1)
+
+
+class ManualSaleSerializer(serializers.Serializer):
+    customer_name = serializers.CharField(max_length=200)
+    customer_phone = serializers.CharField(max_length=20)
+    customer_email = serializers.EmailField(required=False, allow_blank=True)
+    status = serializers.ChoiceField(
+        choices=[
+            ("pending", "Pendiente"),
+            ("confirmed", "Confirmado"),
+            ("preparing", "En preparación"),
+            ("ready", "Listo"),
+            ("completed", "Completado"),
+        ],
+        required=False,
+        default="completed",
+    )
+    notes = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    items = ManualSaleItemSerializer(many=True)
+
+    def validate_items(self, items):
+        if not items:
+            raise serializers.ValidationError("items no puede estar vacío")
+
+        product_ids = [item["product_id"] for item in items]
+        if len(product_ids) != len(set(product_ids)):
+            raise serializers.ValidationError("items contiene productos duplicados")
+
+        return items
+
+    def create(self, validated_data):
+        items = validated_data.pop("items")
+        user = self.context["request"].user
+
+        order = Order.objects.create(
+            **validated_data,
+            delivery_method="pickup",
+            order_source="manual",
+            created_by=user,
+            user=user,
+            total_amount=Decimal("0.00"),
+        )
+
+        total_amount = Decimal("0.00")
+        order_items = []
+
+        for item in items:
+            try:
+                product = Product.objects.get(pk=item["product_id"])
+            except Product.DoesNotExist as exc:
+                raise serializers.ValidationError(
+                    {"items": [f"Producto inválido: {item['product_id']}"]}
+                ) from exc
+            quantity = item["quantity"]
+            total_amount += product.price * quantity
+            order_items.append(
+                OrderItem(
+                    order=order,
+                    product=product,
+                    quantity=quantity,
+                    unit_price=product.price,
+                )
+            )
+
+        OrderItem.objects.bulk_create(order_items)
+        order.total_amount = total_amount
+        order.save(update_fields=["total_amount", "updated_at"])
+        return order
+
+
+def _parse_date(value: str | None, field_name: str):
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise serializers.ValidationError({field_name: "Fecha inválida."}) from exc
+
+
+def _service_date_filter(queryset, start_date=None, end_date=None):
+    service_query = Q()
+
+    if start_date:
+        service_query &= (
+            Q(delivery_method="delivery", created_at__date__gte=start_date)
+            | Q(delivery_method="pickup", pickup_date__gte=start_date)
+            | Q(delivery_method="scheduled", scheduled_date__gte=start_date)
+        )
+
+    if end_date:
+        service_query &= (
+            Q(delivery_method="delivery", created_at__date__lte=end_date)
+            | Q(delivery_method="pickup", pickup_date__lte=end_date)
+            | Q(delivery_method="scheduled", scheduled_date__lte=end_date)
+        )
+
+    return queryset.filter(service_query)
+
+
+def _filtered_sales_queryset(request):
+    queryset = Order.objects.select_related("created_by").prefetch_related(
+        "items__product__category"
+    )
+
+    start_date = _parse_date(request.query_params.get("start_date"), "start_date")
+    end_date = _parse_date(request.query_params.get("end_date"), "end_date")
+
+    if start_date and end_date and end_date < start_date:
+        raise serializers.ValidationError({"end_date": "Debe ser mayor o igual a start_date."})
+
+    status_value = request.query_params.get("status")
+    if status_value:
+        queryset = queryset.filter(status=status_value)
+
+    order_source = request.query_params.get("order_source")
+    if order_source:
+        queryset = queryset.filter(order_source=order_source)
+
+    delivery_method = request.query_params.get("delivery_method")
+    if delivery_method:
+        queryset = queryset.filter(delivery_method=delivery_method)
+
+    time_basis = request.query_params.get("time_basis", "created")
+    if time_basis not in {"created", "service"}:
+        raise serializers.ValidationError({"time_basis": "Valor inválido."})
+
+    if time_basis == "created":
+        if start_date:
+            queryset = queryset.filter(created_at__date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(created_at__date__lte=end_date)
+    else:
+        queryset = _service_date_filter(queryset, start_date, end_date)
+
+    return queryset.order_by("-created_at")
+
+
+class AdminSalesHistoryView(generics.ListAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = (IsAdminUser,)
+    pagination_class = SalesPagination
+
+    def get_queryset(self):
+        return _filtered_sales_queryset(self.request)
+
+
+class AdminSalesMetricsView(APIView):
+    permission_classes = (IsAdminUser,)
+
+    def get(self, request):
+        queryset = _filtered_sales_queryset(request)
+        aggregates = queryset.aggregate(
+            total_sold=Coalesce(
+                Sum("total_amount"),
+                Value(Decimal("0.00")),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            ),
+        )
+        total_orders = queryset.count()
+        total_sold = Decimal(str(aggregates["total_sold"]))
+        average_ticket = (total_sold / total_orders) if total_orders else Decimal("0.00")
+
+        by_delivery_method = []
+        for delivery_method in ("pickup", "delivery", "scheduled"):
+            method_queryset = queryset.filter(delivery_method=delivery_method)
+            method_total_sold = method_queryset.aggregate(
+                total_sold=Coalesce(
+                    Sum("total_amount"),
+                    Value(Decimal("0.00")),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )
+            )["total_sold"]
+            by_delivery_method.append(
+                {
+                    "delivery_method": delivery_method,
+                    "total_orders": method_queryset.count(),
+                    "total_sold": str(Decimal(str(method_total_sold))),
+                }
+            )
+
+        return Response(
+            {
+                "filters": {
+                    "start_date": request.query_params.get("start_date") or None,
+                    "end_date": request.query_params.get("end_date") or None,
+                    "status": request.query_params.get("status") or None,
+                    "order_source": request.query_params.get("order_source") or None,
+                    "delivery_method": request.query_params.get("delivery_method") or None,
+                    "time_basis": request.query_params.get("time_basis") or None,
+                },
+                "total_sold": str(total_sold),
+                "total_orders": total_orders,
+                "average_ticket": str(average_ticket.quantize(Decimal("0.01"))),
+                "by_delivery_method": by_delivery_method,
+            }
+        )
+
+
+class AdminManualSaleRegisterView(APIView):
+    permission_classes = (IsAdminUser,)
+
+    def post(self, request):
+        serializer = ManualSaleSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save()
+        return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+
+
+class AdminManualSaleDeleteView(APIView):
+    permission_classes = (IsAdminUser,)
+
+    def delete(self, request, pk: int):
+        order = get_object_or_404(Order, pk=pk, order_source="manual")
+        order.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class MyOrderHistoryView(generics.ListAPIView):
