@@ -159,29 +159,19 @@ export default function Navbar() {
           </button>
         </div>
 
-        <div className="flex h-[calc(100%-72px)] flex-col justify-between p-4">
+        <div className="flex h-[calc(100%-72px)] flex-col p-4">
           <nav className="space-y-2">
             <Link href="/" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
               Inicio
             </Link>
             {token && (
-              <Link href="/carrito" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
-                Mi carrito
+              <Link href="/cuenta" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
+                Cuenta
               </Link>
             )}
             {token && (
               <Link href="/mi-pedido" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
-                Mi pedido
-              </Link>
-            )}
-            {token && user?.is_staff && (
-              <Link href="/admin/catalogo" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
-                Gestión catálogo
-              </Link>
-            )}
-            {token && user?.is_staff && (
-              <Link href="/admin/horarios" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
-                Gestión horarios
+                Mis pedidos
               </Link>
             )}
 
@@ -205,10 +195,40 @@ export default function Navbar() {
             )}
           </nav>
 
-          <div className="rounded-lg bg-[color-mix(in_srgb,var(--muted)_70%,white)] p-4 text-center">
-            <p className="text-xs text-[var(--muted-foreground)]">Empanadas Caucanas</p>
-            <p className="mt-1 text-xs text-[var(--muted-foreground)]">Tradición desde 1972</p>
-          </div>
+          {token && user?.is_staff && (
+            <div className="mt-auto border-t border-[color-mix(in_srgb,var(--muted)_35%,white)] pt-4">
+              <p className="px-4 text-xs font-semibold tracking-[0.08em] text-[var(--muted-foreground)]">
+                ADMINISTRACIÓN
+              </p>
+              <nav className="mt-2 space-y-2">
+                <Link href="/admin/catalogo" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
+                  Gestión catálogo
+                </Link>
+                <Link href="/admin/pedidos" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
+                  Gestión de pedidos
+                </Link>
+                <Link href="/admin/cobertura" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
+                  Cobertura domicilios
+                </Link>
+                <Link href="/admin/ventas" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
+                  Historial de ventas
+                </Link>
+                <Link href="/admin/reporte-ventas" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
+                  Reporte de ventas
+                </Link>
+                <Link href="/admin/horarios" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
+                  Gestión horarios
+                </Link>
+              </nav>
+            </div>
+          )}
+
+          {!token && (
+            <div className="mt-auto rounded-lg bg-[color-mix(in_srgb,var(--muted)_70%,white)] p-4 text-center">
+              <p className="text-xs text-[var(--muted-foreground)]">Empanadas Caucanas</p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">Tradición desde 1972</p>
+            </div>
+          )}
         </div>
       </aside>
     </>

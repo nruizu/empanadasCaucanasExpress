@@ -1,53 +1,100 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 async function request(path: string, options: RequestInit = {}) {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("cce_token") : null;
 
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Token ${token}` } : {}),
+    ...(options.headers || {}),
+  };
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Token ${token}` } : {}),
-      ...options.headers,
-    },
+    headers,
   });
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || body.error || res.statusText);
+  // 🔥 Manejo especial de 401
+  if (res.status === 401) {
+    console.warn("⚠️ Token inválido o expirado");
+
+    // Limpiar sesión automáticamente
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("cce_token");
+      window.dispatchEvent(new Event("auth:changed"));
+    }
+
+    throw new Error("Sesión expirada. Inicia sesión nuevamente.");
   }
 
-  return res.json().catch(() => ({}));
+  if (!res.ok) {
+    let body: any = {};
+    try {
+      body = await res.json();
+    } catch {
+      // no hizo parse → body vacío
+    }
+
+    console.error("❌ API Error:", body);
+
+    throw new Error(
+      body?.detail ||
+        body?.error ||
+        body?.message ||
+        JSON.stringify(body) ||
+        res.statusText ||
+        "Error en la petición"
+    );
+  }
+
+  // 🔥 evitar error si la respuesta viene vacía
+  try {
+    return await res.json();
+  } catch {
+    return {};
+  }
 }
 
-export function getMyCart() {
+// 🔹 Obtener carrito del usuario
+export async function getMyCart() {
   return request("/api/cart/my_cart/");
 }
 
+// 🔹 Crear carrito
 export function createCart() {
-  return request("/api/cart/create_cart/", { method: "POST" });
-}
-
-export function addProduct(productId: number, quantity: number) {
-  return request("/api/cart/add_product/", {
+  return request("/api/cart/create_cart/", {
     method: "POST",
-    body: JSON.stringify({ product_id: productId, quantity }),
   });
 }
 
+// 🔹 Agregar producto
+export function addProduct(productId: number, quantity: number) {
+  return request("/api/cart/add_product/", {
+    method: "POST",
+    body: JSON.stringify({
+      product_id: productId,
+      quantity,
+    }),
+  });
+}
+
+// 🔹 Obtener carrito por ID
 export function getCart(cartId: number | string) {
   return request(`/api/cart/${cartId}/`);
 }
 
-// 🔹 Eliminar un producto del carrito
+// 🔹 Eliminar producto del carrito
 export function removeProduct(
   cartId: number | string,
-  cartProductId: number | string,
+  cartProductId: number | string
 ) {
   return request(`/api/cart/${cartId}/remove_product/`, {
     method: "DELETE",
-    body: JSON.stringify({ cart_product_id: cartProductId }),
+    body: JSON.stringify({
+      cart_product_id: cartProductId,
+    }),
   });
 }
 
@@ -58,13 +105,16 @@ export function clearCart(cartId: number | string) {
   });
 }
 
-// 🔹 Actualizar cantidad de un producto
+// 🔹 Actualizar cantidad
 export function updateQuantity(
   cartProductId: number | string,
-  quantity: number,
+  quantity: number
 ) {
   return request("/api/cart/update_quantity/", {
     method: "PATCH",
-    body: JSON.stringify({ cart_product_id: cartProductId, quantity }),
+    body: JSON.stringify({
+      cart_product_id: cartProductId,
+      quantity,
+    }),
   });
 }

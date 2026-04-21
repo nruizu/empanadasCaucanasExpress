@@ -30,14 +30,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    return localStorage.getItem(TOKEN_KEY);
-  });
-  const [authReady] = useState<boolean>(() => typeof window !== "undefined");
+  const [token, setToken] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState<boolean>(false);
   const [user, setUser] = useState<{
     id: number;
     username: string;
@@ -51,6 +45,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
+  }, []);
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem(TOKEN_KEY);
+    if (storedToken) {
+      setToken(storedToken);
+    }
+    setAuthReady(true);
   }, []);
 
   useEffect(() => {

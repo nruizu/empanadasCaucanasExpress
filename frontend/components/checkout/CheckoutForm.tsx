@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import * as cartApi from "@/lib/cart-api";
 import { getOrderAvailability, type PublicOrderAvailability } from "@/lib/catalog-api";
+import {
+  validateDeliveryAddress,
+  type DeliveryValidationResponse,
+} from "@/lib/delivery-api";
 import { getBogotaISODate, getWeekdayFromISODate } from "@/lib/colombia-time";
 
 interface CartSnapshot {
@@ -51,6 +55,8 @@ export default function CheckoutForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availability, setAvailability] = useState<PublicOrderAvailability | null>(null);
+  const [deliveryValidation, setDeliveryValidation] =
+    useState<DeliveryValidationResponse | null>(null);
   
   const [formData, setFormData] = useState<CheckoutFormData>({
     customer_name: "",
@@ -76,6 +82,37 @@ export default function CheckoutForm() {
     const nextValue =
       name === "customer_phone" ? value.replace(/\D/g, "").slice(0, 15) : value;
     setFormData((prev) => ({ ...prev, [name]: nextValue }));
+    if (name === "delivery_address") {
+      setDeliveryValidation(null);
+    }
+  };
+
+  const handleValidateDeliveryAddress = async () => {
+    if (formData.delivery_method !== "delivery") {
+      return;
+    }
+
+    const address = formData.delivery_address.trim();
+    if (!address) {
+      setDeliveryValidation(null);
+      return;
+    }
+
+    try {
+      const validation = await validateDeliveryAddress(address);
+      setDeliveryValidation(validation);
+      if (validation.status === "valid") {
+        setError(null);
+      }
+    } catch (validationError) {
+      setDeliveryValidation({
+        status: "service_error",
+        message:
+          validationError instanceof Error
+            ? validationError.message
+            : "No se pudo validar la direccion",
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -129,15 +166,78 @@ export default function CheckoutForm() {
       return;
     }
 
+    if (formData.delivery_method === "delivery") {
+      let validation: DeliveryValidationResponse | null = deliveryValidation;
+
+      if (!validation || validation.status === "not_validated") {
+        try {
+          validation = await validateDeliveryAddress(formData.delivery_address.trim());
+          setDeliveryValidation(validation);
+        } catch (validationError) {
+          validation = {
+            status: "service_error",
+            message:
+              validationError instanceof Error
+                ? validationError.message
+                : "No se pudo validar la direccion",
+          };
+          setDeliveryValidation(validation);
+        }
+      }
+
+      if (validation.status !== "valid") {
+        setError(validation.message || "La dirección de entrega no es válida.");
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
+      // 🔥 OBTENER EL CARRITO ANTES DE CREAR LA ORDEN
       let cartSnapshot: CartSnapshot | null = null;
       if (token) {
         try {
           cartSnapshot = (await cartApi.getMyCart()) as CartSnapshot;
-        } catch {
-          cartSnapshot = null;
+          
+          // Validar que el carrito tenga items
+          if (!cartSnapshot?.products?.length) {
+            setError("Tu carrito está vacío. Agrega productos antes de confirmar el pedido.");
+            setLoading(false);
+            return;
+          }
+        } catch (cartError) {
+          console.error("Error obteniendo carrito:", cartError);
+          setError("No se pudo obtener tu carrito. Por favor intenta nuevamente.");
+          setLoading(false);
+          return;
         }
       }
+
+      // 🔥 CONSTRUIR EL PAYLOAD CON LOS ITEMS
+      const orderPayload = {
+        customer_name: formData.customer_name,
+        customer_phone: formData.customer_phone,
+        delivery_method: formData.delivery_method,
+        status: "pending",
+        ...(formData.delivery_method === "pickup" && {
+          pickup_date: formData.pickup_date,
+          pickup_time: formData.pickup_time,
+        }),
+        ...(formData.delivery_method === "scheduled" && {
+          scheduled_date: formData.scheduled_date,
+        }),
+        ...(formData.delivery_method === "delivery" && {
+          delivery_address: formData.delivery_address,
+        }),
+        notes: formData.notes,
+        // 🔥 AGREGAR LOS ITEMS DEL CARRITO
+        order_items: cartSnapshot?.products.map((item) => ({
+          product_id: item.product.id,
+          quantity: item.quantity,
+        })) || [],
+      };
+
+      console.log("📦 Enviando orden:", orderPayload); // Para debugging
 
       const response = await fetch("http://localhost:8080/api/orders/", {
         method: "POST",
@@ -145,37 +245,25 @@ export default function CheckoutForm() {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Token ${token}` }),
         },
-        body: JSON.stringify({
-          customer_name: formData.customer_name,
-          customer_phone: formData.customer_phone,
-          delivery_method: formData.delivery_method,
-          status: "pending",
-          ...(formData.delivery_method === "pickup" && {
-            pickup_date: formData.pickup_date,
-            pickup_time: formData.pickup_time,
-          }),
-          ...(formData.delivery_method === "scheduled" && {
-            scheduled_date: formData.scheduled_date,
-          }),
-          ...(formData.delivery_method === "delivery" && {
-            delivery_address: formData.delivery_address,
-          }),
-          notes: formData.notes,
-        }),
+        body: JSON.stringify(orderPayload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("❌ Error del servidor:", errorData); // Para debugging
         throw new Error(
           errorData.non_field_errors?.[0] ||
             errorData.delivery_address?.[0] ||
             errorData.pickup_time?.[0] ||
+            errorData.order_items?.[0] ||
             "Error al crear el pedido",
         );
       }
 
-      const createdOrder = await response.json().catch(() => ({}));
+      const createdOrder = await response.json();
+      console.log("✅ Orden creada:", createdOrder); // Para debugging
 
+      // Guardar en localStorage para la página de confirmación
       if (typeof window !== "undefined") {
         localStorage.setItem(
           "cce_last_order",
@@ -193,25 +281,26 @@ export default function CheckoutForm() {
             estimated_delivery_time:
               createdOrder?.estimated_delivery_time ||
               (formData.delivery_method === "delivery" ? "45-60 minutos" : null),
-            total_price: cartSnapshot?.total_price ?? 0,
-            items: cartSnapshot?.products ?? [],
+            total_price: createdOrder?.total_amount || cartSnapshot?.total_price || 0,
+            items: cartSnapshot?.products || [],
           }),
         );
       }
 
-      if (token) {
+      // 🔥 LIMPIAR EL CARRITO DESPUÉS DE CREAR LA ORDEN
+      if (token && cartSnapshot?.id) {
         try {
-          if (cartSnapshot?.id) {
-            await cartApi.clearCart(cartSnapshot.id);
-          }
+          await cartApi.clearCart(cartSnapshot.id);
           window.dispatchEvent(new CustomEvent("cart:updated"));
         } catch (clearError) {
           console.warn("No se pudo vaciar el carrito después del pedido", clearError);
         }
       }
 
+      // Redirigir a la página de confirmación
       router.push("/mi-pedido");
     } catch (err: any) {
+      console.error("❌ Error creando pedido:", err);
       setError(err.message || "Error al crear el pedido");
     } finally {
       setLoading(false);
@@ -222,7 +311,6 @@ export default function CheckoutForm() {
     if (!formData.pickup_date || !availability) return "08:00";
 
     const pickupWeekday = getWeekdayFromISODate(formData.pickup_date);
-    // JS day convention: Sunday=0 ... Saturday=6
     return pickupWeekday === 0
       ? toTimeInput(availability.pickup_sunday_open)
       : toTimeInput(availability.pickup_weekday_open);
@@ -291,6 +379,7 @@ export default function CheckoutForm() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* ... resto del formulario igual ... */}
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-[var(--primary)]">
@@ -415,11 +504,40 @@ export default function CheckoutForm() {
                 name="delivery_address"
                 value={formData.delivery_address}
                 onChange={handleChange}
+                onBlur={() => {
+                  void handleValidateDeliveryAddress();
+                }}
                 required
                 rows={3}
                 className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2 outline-none focus:border-[var(--primary)]"
                 placeholder="Calle, número, barrio..."
               />
+              {deliveryValidation && (
+                <div
+                  className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
+                    deliveryValidation.status === "valid"
+                      ? "border-green-200 bg-green-50 text-green-800"
+                      : "border-amber-200 bg-amber-50 text-amber-800"
+                  }`}
+                >
+                  <p>{deliveryValidation.message}</p>
+                  {deliveryValidation.distance_km && (
+                    <p className="mt-1 text-xs">
+                      Distancia estimada: {deliveryValidation.distance_km} km
+                    </p>
+                  )}
+                  {deliveryValidation.delivery_maps_url && (
+                    <a
+                      href={deliveryValidation.delivery_maps_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-block text-xs font-semibold underline"
+                    >
+                      Ver ubicación en mapa
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
