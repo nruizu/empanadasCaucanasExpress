@@ -1,5 +1,7 @@
 "use client";
 
-import useAuth from "@/context/AuthContext";
+import useAuthFromContext from "@/context/AuthContext";
 
-export default useAuth;
+export default function useAuth() {
+  return useAuthFromContext();
+}

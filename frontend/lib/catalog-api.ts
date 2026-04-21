@@ -89,4 +89,30 @@ export const getProductsByCategory = (slug: string, filters?: ProductFilters) =>
     toQueryParams(filters),
   );
 
+export interface PublicRestrictedDate {
+  id: number;
+  date: string;
+  applies_to: "all" | "pickup" | "delivery" | "scheduled";
+  reason: string;
+  is_active: boolean;
+}
+
+export interface PublicOrderAvailability {
+  pickup_weekday_open: string;
+  pickup_weekday_close: string;
+  pickup_sunday_open: string;
+  pickup_sunday_close: string;
+  delivery_weekday_open: string;
+  delivery_weekday_close: string;
+  delivery_sunday_open: string;
+  delivery_sunday_close: string;
+  is_accepting_orders: boolean;
+  order_notice: string;
+  restricted_dates: PublicRestrictedDate[];
+  updated_at: string;
+}
+
+export const getOrderAvailability = () =>
+  request<PublicOrderAvailability>("/order-availability/");
+
 export { ApiError };

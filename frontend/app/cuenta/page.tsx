@@ -155,13 +155,12 @@ export default function CuentaPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Email *</label>
+            <label className="block text-sm font-medium mb-1">Email (opcional)</label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              required
               className="w-full border p-2 rounded"
             />
           </div>
@@ -194,7 +193,7 @@ export default function CuentaPage() {
 
           <div>
             <label className="block text-sm font-medium mb-1">
-              Dirección *
+              Dirección principal de contacto *
             </label>
             <textarea
               name="address"
@@ -211,10 +210,13 @@ export default function CuentaPage() {
           <h2 className="text-lg font-semibold">
             Información para entregas a domicilio
           </h2>
+          <p className="text-sm text-gray-600">
+            Si dejas esta sección vacía, se usará la dirección principal al hacer pedidos a domicilio.
+          </p>
 
           <div>
             <label className="block text-sm font-medium mb-1">
-              Dirección de entrega
+                Dirección de domicilio (opcional)
             </label>
             <input
               type="text"

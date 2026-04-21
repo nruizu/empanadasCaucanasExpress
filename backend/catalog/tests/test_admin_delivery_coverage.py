@@ -123,3 +123,83 @@ class AdminDeliveryCoverageSettingsApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["id"], latest.id)
         self.assertEqual(response.data["name"], "Cobertura B")
+
+    @patch("backend.catalog.serializers.geocode_address")
+    def test_admin_can_patch_partial_update(self, mock_geocode):
+        mock_geocode.return_value = (Decimal("6.2306000"), Decimal("-75.6011000"))
+        self._auth_admin()
+
+        coverage = DeliveryCoverageSettings.objects.create(
+            name="Cobertura Medellin",
+            local_address="Calle 20B #80-15",
+            local_city="Medellin",
+            local_region="Antioquia",
+            local_country="Colombia",
+            local_latitude="6.2306000",
+            local_longitude="-75.6011000",
+            max_delivery_km="20.00",
+            is_enabled=True,
+        )
+
+        response = self.client.patch(
+            "/api/admin/delivery-coverage/",
+            {
+                "id": coverage.id,
+                "max_delivery_km": "30.00",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        coverage.refresh_from_db()
+        self.assertEqual(str(coverage.max_delivery_km), "30.00")
+
+    @patch("backend.catalog.serializers.geocode_address")
+    def test_admin_replaces_previous_coordinates_when_address_changes(
+        self, mock_geocode
+    ):
+        mock_geocode.return_value = (Decimal("6.2400000"), Decimal("-75.6200000"))
+        self._auth_admin()
+
+        coverage = DeliveryCoverageSettings.objects.create(
+            name="Cobertura Medellin",
+            local_address="Calle 20B #80-15",
+            local_city="Medellin",
+            local_region="Antioquia",
+            local_country="Colombia",
+            local_latitude="6.2306000",
+            local_longitude="-75.6011000",
+            max_delivery_km="20.00",
+            is_enabled=True,
+        )
+
+        response = self.client.patch(
+            "/api/admin/delivery-coverage/",
+            {
+                "id": coverage.id,
+                "local_address": "Carrera 80 #30-15",
+                "local_city": "Medellin",
+                "local_region": "Antioquia",
+                "local_country": "Colombia",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        coverage.refresh_from_db()
+        self.assertEqual(str(coverage.local_latitude), "6.2400000")
+        self.assertEqual(str(coverage.local_longitude), "-75.6200000")
+        mock_geocode.assert_called()
+
+    def test_admin_returns_clear_errors_for_invalid_payload(self):
+        self._auth_admin()
+
+        response = self.client.patch(
+            "/api/admin/delivery-coverage/",
+            {"name": "Solo nombre"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("detail", response.data)
+        self.assertIn("errors", response.data)

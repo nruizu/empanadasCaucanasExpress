@@ -1,13 +1,31 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import * as authApi from "@/lib/auth-api";
 import * as cartApi from "@/lib/cart-api";
-import * as deliveryApi from "@/lib/delivery-api";
+import { getOrderAvailability, type PublicOrderAvailability } from "@/lib/catalog-api";
+import {
+  validateDeliveryAddress,
+  type DeliveryValidationResponse,
+} from "@/lib/delivery-api";
+import { getBogotaISODate, getWeekdayFromISODate } from "@/lib/colombia-time";
+
+interface CartSnapshot {
+  id: number;
+  total_price: number | string;
+  products: Array<{
+    id: number;
+    quantity: number;
+    product: {
+      id: number;
+      name: string;
+      image?: string | null;
+      price?: number | string;
+    };
+  }>;
+}
 
 interface CheckoutFormData {
   customer_name: string;
@@ -17,52 +35,31 @@ interface CheckoutFormData {
   pickup_date: string;
   pickup_time: string;
   scheduled_date: string;
-  delivery_local_address: string;
-  delivery_city: string;
-  delivery_region: string;
-  delivery_country: string;
-  delivery_reference: string;
+  delivery_address: string;
   notes: string;
 }
 
-const getCheckoutErrorMessage = (err: unknown) => {
-  if (err instanceof Error && err.message) {
-    return err.message;
-  }
-  return "Error al crear el pedido";
-};
+const toTimeInput = (value: string) => value.slice(0, 5);
 
-const normalizeColombianMobile = (rawPhone: string): string | null => {
-  const digits = rawPhone.replace(/\D/g, "");
-
-  // Formato local: 3XXXXXXXXX (10 digitos)
-  if (digits.length === 10 && digits.startsWith("3")) {
-    return `+57${digits}`;
-  }
-
-  // Formato internacional sin +: 573XXXXXXXXX (12 digitos)
-  if (digits.length === 12 && digits.startsWith("57") && digits[2] === "3") {
-    return `+${digits}`;
-  }
-
-  return null;
+const formatTime12h = (value: string) => {
+  const [hourRaw, minuteRaw] = value.slice(0, 5).split(":");
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  const period = hour >= 12 ? "PM" : "AM";
+  const normalizedHour = hour % 12 || 12;
+  const normalizedMinute = String(minute).padStart(2, "0");
+  return `${normalizedHour}:${normalizedMinute} ${period}`;
 };
 
 export default function CheckoutForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [infoMessage, setInfoMessage] = useState<string | null>(null);
-  const [deliveryValidationMessage, setDeliveryValidationMessage] = useState<
-    string | null
-  >(null);
-  const [deliveryValidationStatus, setDeliveryValidationStatus] = useState<
-    "not_validated" | "valid" | "invalid" | "out_of_coverage" | "service_error"
-  >("not_validated");
-  const [validatingDelivery, setValidatingDelivery] = useState(false);
-
+  const [availability, setAvailability] = useState<PublicOrderAvailability | null>(null);
+  const [deliveryValidation, setDeliveryValidation] =
+    useState<DeliveryValidationResponse | null>(null);
+  
   const [formData, setFormData] = useState<CheckoutFormData>({
     customer_name: "",
     customer_phone: "",
@@ -71,296 +68,430 @@ export default function CheckoutForm() {
     pickup_date: "",
     pickup_time: "",
     scheduled_date: "",
-    delivery_local_address: "",
-    delivery_city: "",
-    delivery_region: "",
-    delivery_country: "Colombia",
-    delivery_reference: "",
+    delivery_address: "",
     notes: "",
   });
 
-  const buildDeliveryAddress = (data: CheckoutFormData) => {
-    const parts = [
-      data.delivery_local_address.trim(),
-      data.delivery_reference.trim(),
-      data.delivery_city.trim(),
-      data.delivery_region.trim(),
-      data.delivery_country.trim(),
-    ].filter(Boolean);
-
-    return parts.join(", ");
-  };
-
-  useEffect(() => {
-    if (searchParams.get("reorder") === "1") {
-      setInfoMessage(
-        "Carrito cargado con los productos de tu pedido anterior.",
-      );
-      router.replace("/checkout");
-    }
-  }, [searchParams, router]);
-
-  useEffect(() => {
-    if (!token) return;
-
-    let cancelled = false;
-
-    const loadAccountData = async () => {
-      try {
-        const me = await authApi.me(token);
-        if (cancelled) return;
-        setFormData((prev) => ({
-          ...prev,
-          customer_name: me.full_name || prev.customer_name,
-          customer_phone: me.phone || prev.customer_phone,
-          customer_email: me.email || prev.customer_email,
-          delivery_local_address:
-            me.delivery_local_address ||
-            me.address ||
-            prev.delivery_local_address,
-          delivery_city: me.delivery_city || prev.delivery_city,
-          delivery_region: me.delivery_region || prev.delivery_region,
-        }));
-      } catch {
-        // no-op: checkout can still be completed manually
-      }
-    };
-
-    void loadAccountData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+  const globalRestrictionToday = availability?.restricted_dates?.find(
+    (item) =>
+      item.is_active && item.applies_to === "all" && item.date === getBogotaISODate(),
+  );
+  const ordersDisabledGlobally = availability ? !availability.is_accepting_orders : false;
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    if (name === "delivery_method") {
-      setDeliveryValidationStatus("not_validated");
-      setDeliveryValidationMessage(null);
-    }
-
-    if (name.startsWith("delivery_")) {
-      setDeliveryValidationStatus("not_validated");
-      setDeliveryValidationMessage(null);
+    const nextValue =
+      name === "customer_phone" ? value.replace(/\D/g, "").slice(0, 15) : value;
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
+    if (name === "delivery_address") {
+      setDeliveryValidation(null);
     }
   };
 
   const handleValidateDeliveryAddress = async () => {
-    const deliveryAddress = buildDeliveryAddress(formData);
-    if (
-      !formData.delivery_local_address.trim() ||
-      !formData.delivery_city.trim()
-    ) {
-      setDeliveryValidationStatus("invalid");
-      setDeliveryValidationMessage(
-        "Debes ingresar direccion y ciudad/pueblo para validar",
-      );
+    if (formData.delivery_method !== "delivery") {
       return;
     }
 
-    setValidatingDelivery(true);
-    setDeliveryValidationMessage(null);
+    const address = formData.delivery_address.trim();
+    if (!address) {
+      setDeliveryValidation(null);
+      return;
+    }
 
     try {
-      const result = await deliveryApi.validateDeliveryAddress(deliveryAddress);
-      setDeliveryValidationStatus(result.status);
-      setDeliveryValidationMessage(result.message);
-    } catch (err: unknown) {
-      setDeliveryValidationStatus("service_error");
-      setDeliveryValidationMessage(getCheckoutErrorMessage(err));
-    } finally {
-      setValidatingDelivery(false);
+      const validation = await validateDeliveryAddress(address);
+      setDeliveryValidation(validation);
+      if (validation.status === "valid") {
+        setError(null);
+      }
+    } catch (validationError) {
+      setDeliveryValidation({
+        status: "service_error",
+        message:
+          validationError instanceof Error
+            ? validationError.message
+            : "No se pudo validar la direccion",
+      });
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const normalizedPhone = normalizeColombianMobile(formData.customer_phone);
-    if (!normalizedPhone) {
-      setError(
-        "Ingresa un celular colombiano valido (ej: 3001234567 o +573001234567).",
-      );
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
-    const deliveryAddress = buildDeliveryAddress(formData);
-
-    if (
-      formData.delivery_method === "delivery" &&
-      deliveryValidationStatus !== "valid"
-    ) {
+    if (globalRestrictionToday) {
+      const reason = globalRestrictionToday.reason
+        ? ` Motivo: ${globalRestrictionToday.reason}`
+        : "";
+      setError(`No hay servicio de pedidos para hoy.${reason}`);
       setLoading(false);
-      setError(
-        "Debes validar una direccion de domicilio dentro de cobertura antes de confirmar.",
-      );
       return;
     }
 
+    if (ordersDisabledGlobally) {
+      setError("Los pedidos están temporalmente deshabilitados por administración.");
+      setLoading(false);
+      return;
+    }
+
+    const blockedDate = (() => {
+      if (!availability?.restricted_dates?.length) return null;
+
+      const method = formData.delivery_method;
+      const today = getBogotaISODate();
+      const targetDate =
+        method === "delivery"
+          ? today
+          : method === "pickup"
+            ? formData.pickup_date
+            : formData.scheduled_date;
+
+      if (!targetDate) return null;
+
+      return (
+        availability.restricted_dates.find(
+          (item) =>
+            item.is_active &&
+            item.date === targetDate &&
+            (item.applies_to === "all" || item.applies_to === method),
+        ) || null
+      );
+    })();
+
+    if (blockedDate) {
+      const reason = blockedDate.reason ? ` Motivo: ${blockedDate.reason}` : "";
+      setError(`No hay disponibilidad para la fecha seleccionada.${reason}`);
+      setLoading(false);
+      return;
+    }
+
+    if (formData.delivery_method === "delivery") {
+      let validation: DeliveryValidationResponse | null = deliveryValidation;
+
+      if (!validation || validation.status === "not_validated") {
+        try {
+          validation = await validateDeliveryAddress(formData.delivery_address.trim());
+          setDeliveryValidation(validation);
+        } catch (validationError) {
+          validation = {
+            status: "service_error",
+            message:
+              validationError instanceof Error
+                ? validationError.message
+                : "No se pudo validar la direccion",
+          };
+          setDeliveryValidation(validation);
+        }
+      }
+
+      if (validation.status !== "valid") {
+        setError(validation.message || "La dirección de entrega no es válida.");
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
+      // 🔥 OBTENER EL CARRITO ANTES DE CREAR LA ORDEN
+      let cartSnapshot: CartSnapshot | null = null;
+      if (token) {
+        try {
+          cartSnapshot = (await cartApi.getMyCart()) as CartSnapshot;
+          
+          // Validar que el carrito tenga items
+          if (!cartSnapshot?.products?.length) {
+            setError("Tu carrito está vacío. Agrega productos antes de confirmar el pedido.");
+            setLoading(false);
+            return;
+          }
+        } catch (cartError) {
+          console.error("Error obteniendo carrito:", cartError);
+          setError("No se pudo obtener tu carrito. Por favor intenta nuevamente.");
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 🔥 CONSTRUIR EL PAYLOAD CON LOS ITEMS
+      const orderPayload = {
+        customer_name: formData.customer_name,
+        customer_phone: formData.customer_phone,
+        ...(formData.customer_email.trim() && {
+          customer_email: formData.customer_email.trim(),
+        }),
+        delivery_method: formData.delivery_method,
+        status: "pending",
+        ...(formData.delivery_method === "pickup" && {
+          pickup_date: formData.pickup_date,
+          pickup_time: formData.pickup_time,
+        }),
+        ...(formData.delivery_method === "scheduled" && {
+          scheduled_date: formData.scheduled_date,
+        }),
+        ...(formData.delivery_method === "delivery" && {
+          delivery_address: formData.delivery_address,
+        }),
+        notes: formData.notes,
+        // 🔥 AGREGAR LOS ITEMS DEL CARRITO
+        order_items: cartSnapshot?.products.map((item) => ({
+          product_id: item.product.id,
+          quantity: item.quantity,
+        })) || [],
+      };
+
+      console.log("📦 Enviando orden:", orderPayload); // Para debugging
+
       const response = await fetch("http://localhost:8080/api/orders/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Token ${token}` }),
         },
-        body: JSON.stringify({
-          customer_name: formData.customer_name,
-          customer_phone: normalizedPhone,
-          customer_email: formData.customer_email,
-          delivery_method: formData.delivery_method,
-          status: "pending",
-          ...(formData.delivery_method === "pickup" && {
-            pickup_date: formData.pickup_date,
-            pickup_time: formData.pickup_time,
-          }),
-          ...(formData.delivery_method === "scheduled" && {
-            scheduled_date: formData.scheduled_date,
-          }),
-          ...(formData.delivery_method === "delivery" && {
-            delivery_address: deliveryAddress,
-          }),
-          notes: formData.notes,
-        }),
+        body: JSON.stringify(orderPayload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("❌ Error del servidor:", errorData); // Para debugging
         throw new Error(
-          errorData.non_field_errors?.[0] || "Error al crear el pedido",
+          errorData.non_field_errors?.[0] ||
+            errorData.delivery_address?.[0] ||
+            errorData.pickup_time?.[0] ||
+            errorData.order_items?.[0] ||
+            "Error al crear el pedido",
         );
       }
 
-      const orderData = await response.json();
-      const orderId = orderData.id;
+      const createdOrder = await response.json();
+      console.log("✅ Orden creada:", createdOrder); // Para debugging
 
-      if (token) {
+      // Guardar en localStorage para la página de confirmación
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          "cce_last_order",
+          JSON.stringify({
+            id: createdOrder?.id,
+            created_at: createdOrder?.created_at ?? new Date().toISOString(),
+            customer_name: formData.customer_name,
+            customer_phone: formData.customer_phone,
+            delivery_method: formData.delivery_method,
+            pickup_date: formData.pickup_date,
+            pickup_time: formData.pickup_time,
+            scheduled_date: formData.scheduled_date,
+            delivery_address: formData.delivery_address,
+            notes: formData.notes,
+            estimated_delivery_time:
+              createdOrder?.estimated_delivery_time ||
+              (formData.delivery_method === "delivery" ? "45-60 minutos" : null),
+            total_price: createdOrder?.total_amount || cartSnapshot?.total_price || 0,
+            items: cartSnapshot?.products || [],
+          }),
+        );
+      }
+
+      // 🔥 LIMPIAR EL CARRITO DESPUÉS DE CREAR LA ORDEN
+      if (token && cartSnapshot?.id) {
         try {
-          const cart = await cartApi.getMyCart();
-          if (
-            cart?.id &&
-            Array.isArray(cart?.products) &&
-            cart.products.length > 0
-          ) {
-            await cartApi.clearCart(cart.id);
-          }
+          await cartApi.clearCart(cartSnapshot.id);
           window.dispatchEvent(new CustomEvent("cart:updated"));
-        } catch {
-          // no-op: the order was created, so we avoid blocking navigation
+        } catch (clearError) {
+          console.warn("No se pudo vaciar el carrito después del pedido", clearError);
         }
       }
 
-      // Redirigir a página de confirmación
-      router.push(`/confirmacion?orderId=${orderId}`);
-    } catch (err: unknown) {
-      setError(getCheckoutErrorMessage(err));
+      // Redirigir a la página de confirmación
+      router.push("/mi-pedido");
+    } catch (err: any) {
+      console.error("❌ Error creando pedido:", err);
+      setError(err.message || "Error al crear el pedido");
     } finally {
       setLoading(false);
     }
   };
 
+  const getPickupMinTime = () => {
+    if (!formData.pickup_date || !availability) return "08:00";
+
+    const pickupWeekday = getWeekdayFromISODate(formData.pickup_date);
+    return pickupWeekday === 0
+      ? toTimeInput(availability.pickup_sunday_open)
+      : toTimeInput(availability.pickup_weekday_open);
+  };
+
+  const getPickupMaxTime = () => {
+    if (!formData.pickup_date || !availability) return "20:00";
+
+    const pickupWeekday = getWeekdayFromISODate(formData.pickup_date);
+    return pickupWeekday === 0
+      ? toTimeInput(availability.pickup_sunday_close)
+      : toTimeInput(availability.pickup_weekday_close);
+  };
+
+  const isPickupSunday =
+    Boolean(formData.pickup_date) &&
+    getWeekdayFromISODate(formData.pickup_date) === 0;
+
+  const pickupScheduleLabel =
+    isPickupSunday
+      ? `Hora de recogida * (domingo: ${formatTime12h(availability?.pickup_sunday_open ?? "08:00:00")} - ${formatTime12h(availability?.pickup_sunday_close ?? "20:00:00")})`
+      : `Hora de recogida * (lunes a sábado: ${formatTime12h(availability?.pickup_weekday_open ?? "09:00:00")} - ${formatTime12h(availability?.pickup_weekday_close ?? "20:00:00")})`;
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadAccountDefaults = async () => {
+      try {
+        const me = await authApi.me(token);
+        if (cancelled) return;
+
+        const deliveryParts = [
+          me.delivery_local_address?.trim() || "",
+          me.delivery_city?.trim() || "",
+          me.delivery_region?.trim() || "",
+        ].filter(Boolean);
+
+        const preferredDeliveryAddress =
+          deliveryParts.length > 0
+            ? deliveryParts.join(", ")
+            : (me.address || "").trim();
+
+        setFormData((prev) => ({
+          ...prev,
+          customer_name: prev.customer_name || me.full_name || "",
+          customer_phone: prev.customer_phone || me.phone || "",
+          customer_email: prev.customer_email || me.email || "",
+          delivery_address: prev.delivery_address || preferredDeliveryAddress,
+        }));
+      } catch {
+        // Keep checkout usable even if profile loading fails.
+      }
+    };
+
+    void loadAccountDefaults();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    const loadAvailability = async () => {
+      try {
+        const data = await getOrderAvailability();
+        setAvailability(data);
+      } catch {
+        setAvailability(null);
+      }
+    };
+
+    void loadAvailability();
+  }, []);
+
   return (
-    <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
-      <div className="mx-auto max-w-2xl bg-white p-6 rounded">
-        <h1 className="text-2xl font-bold mb-6">Confirmar Pedido</h1>
+    <main className="min-h-screen bg-[var(--background)] px-4 py-10 md:px-10">
+      <div className="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgba(31,92,58,0.08)] md:p-8">
+        <h1 className="mb-1 text-2xl font-bold text-[var(--primary)] md:text-3xl">Confirmar pedido</h1>
+        <p className="mb-6 text-sm text-[var(--muted-foreground)]">Completa los datos para finalizar tu orden.</p>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
             {error}
           </div>
         )}
 
-        {infoMessage && (
-          <div className="mb-4 rounded bg-green-100 p-4 text-green-700">
-            {infoMessage}
+        {availability?.order_notice && (
+          <div className="mb-4 rounded-xl border-2 border-red-400 bg-red-100 p-4 text-red-900">
+            {availability.order_notice}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">
+        {ordersDisabledGlobally && (
+          <div className="mb-4 rounded-xl border-2 border-red-600 bg-red-200 p-4 font-semibold text-red-950">
+            Los pedidos están cerrados temporalmente en todas las modalidades.
+          </div>
+        )}
+
+        {globalRestrictionToday && (
+          <div className="mb-4 rounded-xl border-2 border-red-500 bg-red-100 p-4 text-red-900">
+            Hay una restricción global activa para hoy y no se permiten pedidos en ninguna modalidad.
+            {globalRestrictionToday.reason ? ` Motivo: ${globalRestrictionToday.reason}` : ""}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* ... resto del formulario igual ... */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--primary)]">
               Nombre completo *
-            </label>
-            <div className="mb-1 text-xs text-gray-500">
-              ¿Necesitas actualizar tus datos?{" "}
-              <Link
-                href="/cuenta"
-                className="text-[var(--cce-green-dark)] underline"
-              >
-                Ir a cuenta
-              </Link>
+              </label>
+              <input
+                type="text"
+                name="customer_name"
+                value={formData.customer_name}
+                onChange={handleChange}
+                required
+                className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2 outline-none focus:border-[var(--primary)]"
+              />
             </div>
-            <input
-              type="text"
-              name="customer_name"
-              value={formData.customer_name}
-              onChange={handleChange}
-              required
-              className="w-full border p-2 rounded"
-            />
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--primary)]">
+              Teléfono *
+              </label>
+              <input
+                type="tel"
+                name="customer_phone"
+                value={formData.customer_phone}
+                onChange={handleChange}
+                required
+                inputMode="numeric"
+                pattern="[0-9]{7,15}"
+                minLength={7}
+                maxLength={15}
+                className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2 outline-none focus:border-[var(--primary)]"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Teléfono *</label>
-            <input
-              type="tel"
-              name="customer_phone"
-              value={formData.customer_phone}
-              onChange={handleChange}
-              required
-              inputMode="numeric"
-              placeholder="3001234567 o +573001234567"
-              pattern="^(\\+57|57)?3[0-9]{9}$"
-              className="w-full border p-2 rounded"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Solo celular colombiano. Ejemplos: 3001234567, 573001234567,
-              +573001234567.
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email"
-              name="customer_email"
-              value={formData.customer_email}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="mb-1 block text-sm font-medium text-[var(--primary)]">
               Modalidad de entrega *
             </label>
             <select
               name="delivery_method"
               value={formData.delivery_method}
               onChange={handleChange}
-              className="w-full border p-2 rounded"
+              disabled={Boolean(globalRestrictionToday) || ordersDisabledGlobally}
+              className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2 outline-none focus:border-[var(--primary)]"
             >
               <option value="pickup">Recoger en sede</option>
               <option value="delivery">Entrega a domicilio</option>
               <option value="scheduled">Programado</option>
             </select>
+            {(globalRestrictionToday || ordersDisabledGlobally) && (
+              <p className="mt-1 text-xs font-medium text-red-700">
+                El selector está bloqueado por cierre global de pedidos.
+              </p>
+            )}
           </div>
 
           {formData.delivery_method === "pickup" && (
-            <div className="p-4 bg-blue-50 rounded space-y-4">
-              <h3 className="font-semibold">Recogida en sede</h3>
+            <div className="space-y-4 rounded-xl border border-[color-mix(in_srgb,var(--primary)_12%,white)] bg-[color-mix(in_srgb,var(--secondary)_16%,white)] p-4">
+              <h3 className="font-semibold text-[var(--primary)]">Recogida en sede</h3>
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Horario: lunes a sábado de {formatTime12h(availability?.pickup_weekday_open ?? "09:00:00")} a {formatTime12h(availability?.pickup_weekday_close ?? "20:00:00")} y domingo de {formatTime12h(availability?.pickup_sunday_open ?? "08:00:00")} a {formatTime12h(availability?.pickup_sunday_close ?? "20:00:00")}.
+              </p>
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="mb-1 block text-sm font-medium text-[var(--primary)]">
                   Fecha de recogida *
                 </label>
                 <input
@@ -369,12 +500,12 @@ export default function CheckoutForm() {
                   value={formData.pickup_date}
                   onChange={handleChange}
                   required
-                  className="w-full border p-2 rounded"
+                  className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2 outline-none focus:border-[var(--primary)]"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Hora de recogida * (8:00 AM - 8:00 PM)
+                <label className="mb-1 block text-sm font-medium text-[var(--primary)]">
+                  {pickupScheduleLabel}
                 </label>
                 <input
                   type="time"
@@ -382,21 +513,19 @@ export default function CheckoutForm() {
                   value={formData.pickup_time}
                   onChange={handleChange}
                   required
-                  min="08:00"
-                  max="20:00"
-                  className="w-full border p-2 rounded"
+                  min={getPickupMinTime()}
+                  max={getPickupMaxTime()}
+                  className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2 outline-none focus:border-[var(--primary)]"
                 />
               </div>
             </div>
           )}
 
           {formData.delivery_method === "scheduled" && (
-            <div className="p-4 bg-green-50 rounded">
-              <h3 className="font-semibold mb-2">
-                Programar para fecha futura
-              </h3>
+            <div className="rounded-xl border border-[color-mix(in_srgb,var(--primary)_12%,white)] bg-[color-mix(in_srgb,var(--primary)_7%,white)] p-4">
+              <h3 className="mb-2 font-semibold text-[var(--primary)]">Programar para fecha futura</h3>
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="mb-1 block text-sm font-medium text-[var(--primary)]">
                   Fecha programada *
                 </label>
                 <input
@@ -406,87 +535,62 @@ export default function CheckoutForm() {
                   onChange={handleChange}
                   required
                   min={new Date().toISOString().split("T")[0]}
-                  className="w-full border p-2 rounded"
+                  className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2 outline-none focus:border-[var(--primary)]"
                 />
               </div>
             </div>
           )}
 
           {formData.delivery_method === "delivery" && (
-            <div className="p-4 bg-yellow-50 rounded">
-              <h3 className="font-semibold mb-2">Dirección de entrega</h3>
-              <input
-                name="delivery_local_address"
-                value={formData.delivery_local_address}
-                onChange={handleChange}
-                required
-                className="w-full border p-2 rounded"
-                placeholder="Direccion (ej: Calle 20B #80-15)"
-              />
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <input
-                  name="delivery_city"
-                  value={formData.delivery_city}
-                  onChange={handleChange}
-                  required
-                  className="w-full border p-2 rounded"
-                  placeholder="Ciudad o pueblo (ej: Medellin)"
-                />
-                <input
-                  name="delivery_region"
-                  value={formData.delivery_region}
-                  onChange={handleChange}
-                  className="w-full border p-2 rounded"
-                  placeholder="Departamento/region (ej: Antioquia)"
-                />
-                <input
-                  name="delivery_country"
-                  value={formData.delivery_country}
-                  onChange={handleChange}
-                  className="w-full border p-2 rounded"
-                  placeholder="Pais (ej: Colombia)"
-                />
-                <input
-                  name="delivery_reference"
-                  value={formData.delivery_reference}
-                  onChange={handleChange}
-                  className="w-full border p-2 rounded"
-                  placeholder="Referencia (opcional, ej: Barrio Belen)"
-                />
-              </div>
-              <p className="mt-2 text-xs text-gray-600">
-                Vista previa:{" "}
-                {buildDeliveryAddress(formData) || "Completa la direccion"}
+            <div className="rounded-xl border border-[color-mix(in_srgb,var(--primary)_12%,white)] bg-[color-mix(in_srgb,var(--secondary)_20%,white)] p-4">
+              <h3 className="mb-2 font-semibold text-[var(--primary)]">Dirección de entrega</h3>
+              <p className="mb-3 text-sm text-[var(--muted-foreground)]">
+                Horario domicilio: lunes a sábado de {formatTime12h(availability?.delivery_weekday_open ?? "09:00:00")} a {formatTime12h(availability?.delivery_weekday_close ?? "19:30:00")}, domingo de {formatTime12h(availability?.delivery_sunday_open ?? "08:00:00")} a {formatTime12h(availability?.delivery_sunday_close ?? "19:30:00")}.
               </p>
-              <div className="mt-3 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => void handleValidateDeliveryAddress()}
-                  disabled={validatingDelivery}
-                  className="rounded bg-[var(--cce-green-dark)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  {validatingDelivery ? "Validando..." : "Validar direccion"}
-                </button>
-                <span className="text-xs text-gray-600">
-                  Solo se valida para pedidos a domicilio.
-                </span>
-              </div>
-              {deliveryValidationMessage && (
-                <p
-                  className={`mt-2 text-sm ${
-                    deliveryValidationStatus === "valid"
-                      ? "text-green-700"
-                      : "text-red-700"
+              <p className="mb-3 text-sm font-semibold text-[var(--primary)]">Tiempo estimado de entrega: 45-60 minutos</p>
+              <textarea
+                name="delivery_address"
+                value={formData.delivery_address}
+                onChange={handleChange}
+                onBlur={() => {
+                  void handleValidateDeliveryAddress();
+                }}
+                required
+                rows={3}
+                className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2 outline-none focus:border-[var(--primary)]"
+                placeholder="Calle, número, barrio..."
+              />
+              {deliveryValidation && (
+                <div
+                  className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
+                    deliveryValidation.status === "valid"
+                      ? "border-green-200 bg-green-50 text-green-800"
+                      : "border-amber-200 bg-amber-50 text-amber-800"
                   }`}
                 >
-                  {deliveryValidationMessage}
-                </p>
+                  <p>{deliveryValidation.message}</p>
+                  {deliveryValidation.distance_km && (
+                    <p className="mt-1 text-xs">
+                      Distancia estimada: {deliveryValidation.distance_km} km
+                    </p>
+                  )}
+                  {deliveryValidation.delivery_maps_url && (
+                    <a
+                      href={deliveryValidation.delivery_maps_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-block text-xs font-semibold underline"
+                    >
+                      Ver ubicación en mapa
+                    </a>
+                  )}
+                </div>
               )}
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="mb-1 block text-sm font-medium text-[var(--primary)]">
               Notas adicionales
             </label>
             <textarea
@@ -494,7 +598,7 @@ export default function CheckoutForm() {
               value={formData.notes}
               onChange={handleChange}
               rows={3}
-              className="w-full border p-2 rounded"
+              className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2 outline-none focus:border-[var(--primary)]"
               placeholder="Instrucciones especiales..."
             />
           </div>
@@ -503,16 +607,16 @@ export default function CheckoutForm() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300"
+              className="flex-1 rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white py-2.5 font-medium text-[var(--primary)] transition-colors hover:bg-[var(--background)]"
             >
               Volver
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="flex-1 bg-[var(--cce-pink)] text-white py-2 rounded hover:opacity-90 disabled:opacity-50"
+              disabled={loading || Boolean(globalRestrictionToday) || ordersDisabledGlobally}
+              className="flex-1 rounded-lg bg-[var(--accent)] py-2.5 font-semibold text-[var(--accent-foreground)] shadow-sm transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_88%,black)] disabled:opacity-50"
             >
-              {loading ? "Creando..." : "Confirmar Pedido"}
+              {globalRestrictionToday || ordersDisabledGlobally ? "Pedidos deshabilitados" : loading ? "Creando..." : "Confirmar Pedido"}
             </button>
           </div>
         </form>

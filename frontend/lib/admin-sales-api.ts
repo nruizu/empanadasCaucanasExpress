@@ -62,11 +62,15 @@ const request = async <T>(
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
+    const firstFieldMessage = Object.values(body ?? {})
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .find((value) => typeof value === "string");
     const message =
       body.detail ||
       body.error ||
       body.non_field_errors?.[0] ||
       body.items?.[0] ||
+      firstFieldMessage ||
       "Error al gestionar ventas";
 
     throw new AdminSalesApiError(message, response.status);

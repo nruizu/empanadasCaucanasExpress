@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
@@ -45,7 +46,7 @@ const toPayload = (form: ProductFormState): ProductAdminPayload => ({
 
 export default function AdminCatalogPage() {
   const router = useRouter();
-  const { token, authReady, user } = useAuth();
+  const { token, user } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -56,10 +57,7 @@ export default function AdminCatalogPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const canAccess = useMemo(
-    () => Boolean(token && user?.is_staff),
-    [token, user],
-  );
+  const canAccess = useMemo(() => Boolean(token && user?.is_staff), [token, user]);
 
   const resetForm = () => {
     setForm(INITIAL_FORM);
@@ -86,10 +84,6 @@ export default function AdminCatalogPage() {
   }, []);
 
   useEffect(() => {
-    if (!authReady) {
-      return;
-    }
-
     if (!token) {
       router.replace("/login");
       return;
@@ -103,7 +97,7 @@ export default function AdminCatalogPage() {
     if (canAccess) {
       void loadData();
     }
-  }, [token, authReady, user, canAccess, loadData, router]);
+  }, [token, user, canAccess, loadData, router]);
 
   const handleFieldChange = (
     field: keyof ProductFormState,
@@ -129,12 +123,7 @@ export default function AdminCatalogPage() {
   };
 
   const validateForm = () => {
-    if (
-      !form.name.trim() ||
-      !form.slug.trim() ||
-      !form.price.trim() ||
-      !form.category_id
-    ) {
+    if (!form.name.trim() || !form.slug.trim() || !form.price.trim() || !form.category_id) {
       setError("Nombre, slug, precio y categoría son obligatorios.");
       return false;
     }
@@ -184,9 +173,7 @@ export default function AdminCatalogPage() {
   };
 
   const handleDelete = async (productId: number) => {
-    const accepted = window.confirm(
-      "¿Seguro que deseas eliminar este producto?",
-    );
+    const accepted = window.confirm("¿Seguro que deseas eliminar este producto?");
     if (!accepted) {
       return;
     }
@@ -225,12 +212,20 @@ export default function AdminCatalogPage() {
     <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-8 md:px-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <section className="rounded-xl bg-white p-6 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-          <h1 className="text-2xl font-bold text-[var(--cce-green-dark)]">
-            Gestión de catálogo
-          </h1>
-          <p className="mt-1 text-sm text-[var(--cce-text-muted)]">
-            Crea, edita y elimina productos visibles para clientes.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h1 className="text-2xl font-bold text-[var(--cce-green-dark)]">Gestión de catálogo</h1>
+              <p className="mt-1 text-sm text-[var(--cce-text-muted)]">
+                Crea, edita y elimina productos visibles para clientes.
+              </p>
+            </div>
+            <Link
+              href="/admin/horarios"
+              className="rounded-full border border-[var(--cce-green-dark)] px-4 py-2 text-sm font-semibold text-[var(--cce-green-dark)]"
+            >
+              Ir a gestión de horarios
+            </Link>
+          </div>
 
           {error && (
             <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -244,33 +239,24 @@ export default function AdminCatalogPage() {
             </div>
           )}
 
-          <form
-            onSubmit={handleSubmit}
-            className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2"
-          >
+          <form onSubmit={handleSubmit} className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             <input
               value={form.name}
-              onChange={(event) =>
-                handleFieldChange("name", event.target.value)
-              }
+              onChange={(event) => handleFieldChange("name", event.target.value)}
               placeholder="Nombre"
               className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
             />
 
             <input
               value={form.slug}
-              onChange={(event) =>
-                handleFieldChange("slug", event.target.value)
-              }
+              onChange={(event) => handleFieldChange("slug", event.target.value)}
               placeholder="Slug"
               className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
             />
 
             <input
               value={form.price}
-              onChange={(event) =>
-                handleFieldChange("price", event.target.value)
-              }
+              onChange={(event) => handleFieldChange("price", event.target.value)}
               placeholder="Precio"
               type="number"
               min="0"
@@ -280,9 +266,7 @@ export default function AdminCatalogPage() {
 
             <select
               value={form.category_id}
-              onChange={(event) =>
-                handleFieldChange("category_id", event.target.value)
-              }
+              onChange={(event) => handleFieldChange("category_id", event.target.value)}
               className="rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
             >
               <option value="">Selecciona una categoría</option>
@@ -295,9 +279,7 @@ export default function AdminCatalogPage() {
 
             <textarea
               value={form.description}
-              onChange={(event) =>
-                handleFieldChange("description", event.target.value)
-              }
+              onChange={(event) => handleFieldChange("description", event.target.value)}
               placeholder="Descripción"
               rows={4}
               className="md:col-span-2 rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
@@ -307,9 +289,7 @@ export default function AdminCatalogPage() {
               <input
                 type="checkbox"
                 checked={form.is_featured}
-                onChange={(event) =>
-                  handleFieldChange("is_featured", event.target.checked)
-                }
+                onChange={(event) => handleFieldChange("is_featured", event.target.checked)}
               />
               Producto destacado
             </label>
@@ -318,9 +298,7 @@ export default function AdminCatalogPage() {
               <input
                 type="checkbox"
                 checked={form.is_active}
-                onChange={(event) =>
-                  handleFieldChange("is_active", event.target.checked)
-                }
+                onChange={(event) => handleFieldChange("is_active", event.target.checked)}
               />
               Producto activo
             </label>
@@ -331,11 +309,7 @@ export default function AdminCatalogPage() {
                 disabled={submitting}
                 className="rounded-full bg-[var(--cce-green-dark)] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {submitting
-                  ? "Guardando..."
-                  : editingId
-                    ? "Actualizar producto"
-                    : "Crear producto"}
+                {submitting ? "Guardando..." : editingId ? "Actualizar producto" : "Crear producto"}
               </button>
 
               {editingId && (
@@ -352,18 +326,12 @@ export default function AdminCatalogPage() {
         </section>
 
         <section className="rounded-xl bg-white p-6 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
-          <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">
-            Productos existentes
-          </h2>
+          <h2 className="text-xl font-bold text-[var(--cce-green-dark)]">Productos existentes</h2>
 
           {loading ? (
-            <p className="mt-4 text-sm text-[var(--cce-text-muted)]">
-              Cargando productos...
-            </p>
+            <p className="mt-4 text-sm text-[var(--cce-text-muted)]">Cargando productos...</p>
           ) : products.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--cce-text-muted)]">
-              No hay productos para mostrar.
-            </p>
+            <p className="mt-4 text-sm text-[var(--cce-text-muted)]">No hay productos para mostrar.</p>
           ) : (
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full text-left text-sm">
@@ -379,17 +347,12 @@ export default function AdminCatalogPage() {
                 </thead>
                 <tbody>
                   {products.map((product) => (
-                    <tr
-                      key={product.id}
-                      className="border-b border-[color-mix(in_srgb,var(--cce-green-dark)_10%,white)]"
-                    >
+                    <tr key={product.id} className="border-b border-[color-mix(in_srgb,var(--cce-green-dark)_10%,white)]">
                       <td className="px-3 py-2">{product.name}</td>
                       <td className="px-3 py-2">{product.slug}</td>
                       <td className="px-3 py-2">${product.price}</td>
                       <td className="px-3 py-2">{product.category.name}</td>
-                      <td className="px-3 py-2">
-                        {product.is_active ? "Activo" : "Inactivo"}
-                      </td>
+                      <td className="px-3 py-2">{product.is_active ? "Activo" : "Inactivo"}</td>
                       <td className="px-3 py-2">
                         <div className="flex gap-2">
                           <button

@@ -6,6 +6,30 @@ from django.utils.text import slugify
 from backend.catalog.models import Category, Product
 
 
+def should_be_featured(product_name: str) -> bool:
+    name = product_name.lower()
+
+    if "desayuno" in name:
+        return False
+
+    is_empanada_caucana = "empanada caucana" in name or "empanadas caucanas" in name
+    is_chuzo_res_cerdo = "chuzo" in name and ("res" in name or "cerdo" in name)
+    # Compatibilidad con el catálogo actual donde hay productos de chorizo pollo/cerdo.
+    is_chorizo_cerdo = "chorizo" in name and ("cerdo" in name or "pollo" in name)
+    is_chicharron_chocolo = "chicharr" in name
+    is_picada = "picada" in name
+
+    return any(
+        [
+            is_empanada_caucana,
+            is_chuzo_res_cerdo,
+            is_chorizo_cerdo,
+            is_chicharron_chocolo,
+            is_picada,
+        ]
+    )
+
+
 @transaction.atomic
 def run_seed_products():
     categories_data = [
@@ -180,7 +204,7 @@ def run_seed_products():
                 "price": Decimal(price),
                 "category": categories[category_slug],
                 "is_active": is_active,
-                "is_featured": False,
+                "is_featured": should_be_featured(name),
             },
         )
         processed += 1

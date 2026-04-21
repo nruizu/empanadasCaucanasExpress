@@ -2,19 +2,19 @@ from django.urls import path
 
 from .views import (
     ActiveCategoryListView,
-    AdminDeliveryCoverageSettingsView,
-    AdminManualSaleCreateView,
-    AdminManualSaleDeleteView,
     ActiveProductListView,
+    AdminDeliveryCoverageSettingsView,
+    AdminOrderAvailabilityConfigView,
     AdminProductDetailView,
     AdminProductListCreateView,
+    AdminRestrictedDateDetailView,
+    AdminRestrictedDateListCreateView,
     CategoryProductListView,
     DeliveryAddressValidationView,
     FeaturedProductListView,
     OrderListCreateView,
     OrderDetailView,
-    SalesHistoryListView,
-    SalesMetricsView,
+    PublicOrderAvailabilityView,
 )
 
 urlpatterns = [
@@ -46,11 +46,6 @@ urlpatterns = [
         name="admin-product-detail",
     ),
     path(
-        "admin/delivery-coverage/",
-        AdminDeliveryCoverageSettingsView.as_view(),
-        name="admin-delivery-coverage",
-    ),
-    path(
         "orders/",
         OrderListCreateView.as_view(),
         name="order-list-create",
@@ -58,7 +53,7 @@ urlpatterns = [
     path(
         "orders/delivery/validate/",
         DeliveryAddressValidationView.as_view(),
-        name="delivery-address-validate",
+        name="order-delivery-validate",
     ),
     path(
         "orders/<int:pk>/",
@@ -66,23 +61,28 @@ urlpatterns = [
         name="order-detail",
     ),
     path(
-        "admin/sales/history/",
-        SalesHistoryListView.as_view(),
-        name="admin-sales-history",
+        "order-availability/",
+        PublicOrderAvailabilityView.as_view(),
+        name="public-order-availability",
     ),
     path(
-        "admin/sales/metrics/",
-        SalesMetricsView.as_view(),
-        name="admin-sales-metrics",
+        "admin/order-availability/",
+        AdminOrderAvailabilityConfigView.as_view(),
+        name="admin-order-availability",
     ),
     path(
-        "admin/sales/register/",
-        AdminManualSaleCreateView.as_view(),
-        name="admin-sales-register",
+        "admin/restricted-dates/",
+        AdminRestrictedDateListCreateView.as_view(),
+        name="admin-restricted-date-list-create",
     ),
     path(
-        "admin/sales/<int:pk>/",
-        AdminManualSaleDeleteView.as_view(),
-        name="admin-sales-delete",
+        "admin/restricted-dates/<int:pk>/",
+        AdminRestrictedDateDetailView.as_view(),
+        name="admin-restricted-date-detail",
+    ),
+    path(
+        "admin/delivery-coverage/",
+        AdminDeliveryCoverageSettingsView.as_view(),
+        name="admin-delivery-coverage",
     ),
 ]

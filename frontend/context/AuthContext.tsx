@@ -24,20 +24,17 @@ interface AuthContextType {
     full_name: string,
     phone: string,
     address: string,
+    delivery_local_address?: string,
+    delivery_city?: string,
+    delivery_region?: string,
   ) => Promise<unknown>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    return localStorage.getItem(TOKEN_KEY);
-  });
-  const [authReady] = useState<boolean>(() => typeof window !== "undefined");
+  const [token, setToken] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState<boolean>(false);
   const [user, setUser] = useState<{
     id: number;
     username: string;
@@ -51,6 +48,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
+  }, []);
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem(TOKEN_KEY);
+    if (storedToken) {
+      setToken(storedToken);
+    }
+    setAuthReady(true);
   }, []);
 
   useEffect(() => {
@@ -112,6 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       full_name: string,
       phone: string,
       address: string,
+      delivery_local_address = "",
+      delivery_city = "",
+      delivery_region = "",
     ) => {
       const data = await authApi.register({
         username,
@@ -120,6 +128,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         full_name,
         phone,
         address,
+        delivery_local_address,
+        delivery_city,
+        delivery_region,
       }); // si falla, throw llega al catch de RegisterPage
       saveToken(data.token);
       setUser({

@@ -6,7 +6,7 @@ import useAuth from "@/context/AuthContext";
 import {
   getDeliveryCoverageSettings,
   saveDeliveryCoverageSettings,
-  type DeliveryCoverageSettingsDto,
+  type DeliveryCoverageSettingsUpdatePayload,
 } from "@/lib/admin-delivery-coverage-api";
 
 interface CoverageFormState {
@@ -107,7 +107,30 @@ export default function AdminCoveragePage() {
     field: keyof CoverageFormState,
     value: string | boolean,
   ) => {
-    setForm((current) => ({ ...current, [field]: value }));
+    const clearsCoordinates =
+      field === "local_address" ||
+      field === "local_city" ||
+      field === "local_region" ||
+      field === "local_country" ||
+      field === "local_reference";
+
+    if (field === "max_delivery_km" && typeof value === "string") {
+      const normalized = value.replace(",", ".");
+      setForm((current) => ({
+        ...current,
+        [field]: normalized,
+        ...(clearsCoordinates
+          ? { local_latitude: "", local_longitude: "" }
+          : {}),
+      }));
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+      ...(clearsCoordinates ? { local_latitude: "", local_longitude: "" } : {}),
+    }));
   };
 
   const validateForm = () => {
@@ -147,7 +170,7 @@ export default function AdminCoveragePage() {
 
     setSubmitting(true);
     try {
-      const payload: DeliveryCoverageSettingsDto = {
+      const payload: DeliveryCoverageSettingsUpdatePayload = {
         id: form.id,
         name: form.name.trim(),
         local_address: form.local_address.trim(),
@@ -155,12 +178,9 @@ export default function AdminCoveragePage() {
         local_region: form.local_region.trim(),
         local_country: form.local_country.trim() || "Colombia",
         local_reference: form.local_reference.trim(),
-        local_latitude: form.local_latitude.trim(),
-        local_longitude: form.local_longitude.trim(),
         max_delivery_km: form.max_delivery_km.trim(),
         is_enabled: form.is_enabled,
         coverage_note: form.coverage_note.trim(),
-        updated_at: lastUpdatedAt,
       };
 
       const saved = await saveDeliveryCoverageSettings(payload);

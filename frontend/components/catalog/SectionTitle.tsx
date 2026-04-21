@@ -5,13 +5,9 @@ interface SectionTitleProps {
 
 export default function SectionTitle({ title, subtitle }: SectionTitleProps) {
   return (
-    <header className="mb-5">
-      <h2 className="text-2xl font-bold text-[var(--cce-green-dark)] md:text-3xl">
-        {title}
-      </h2>
-      {subtitle ? (
-        <p className="mt-1 text-sm text-[var(--cce-text-muted)]">{subtitle}</p>
-      ) : null}
+    <header className="mb-6">
+      <h2 className="text-2xl font-bold text-[var(--primary)] md:text-3xl">{title}</h2>
+      {subtitle ? <p className="mt-2 text-sm text-[var(--muted-foreground)] md:text-base">{subtitle}</p> : null}
     </header>
   );
 }

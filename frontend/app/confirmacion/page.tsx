@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -15,7 +15,7 @@ interface OrderConfirmationData {
   status: string;
 }
 
-export default function OrderConfirmationPage() {
+function OrderConfirmationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -256,5 +256,21 @@ export default function OrderConfirmationPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function OrderConfirmationPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
+          <div className="mx-auto max-w-2xl bg-white p-6 rounded text-center">
+            <p className="text-[var(--cce-text-muted)]">Cargando confirmacion...</p>
+          </div>
+        </main>
+      }
+    >
+      <OrderConfirmationContent />
+    </Suspense>
   );
 }

@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Category, Product, Order, OrderItem, DeliveryCoverageSettings
+from .models import (
+    Category,
+    Product,
+    Order,
+    OrderItem,
+    OrderAvailabilityConfig,
+    RestrictedDate,
+)
 
 
 @admin.register(Category)
@@ -25,10 +32,7 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "customer_name",
-        "order_source",
-        "created_by",
         "delivery_method",
-        "address_validation_status",
         "status",
         "pickup_date",
         "pickup_time",
@@ -36,7 +40,7 @@ class OrderAdmin(admin.ModelAdmin):
         "total_amount",
         "created_at",
     )
-    list_filter = ("order_source", "status", "delivery_method", "created_at")
+    list_filter = ("status", "delivery_method", "created_at")
     search_fields = ("customer_name", "customer_phone", "customer_email")
     readonly_fields = ("created_at", "updated_at")
 
@@ -45,18 +49,7 @@ class OrderAdmin(admin.ModelAdmin):
             "Información del Cliente",
             {"fields": ("customer_name", "customer_phone", "customer_email")},
         ),
-        (
-            "Detalles del Pedido",
-            {
-                "fields": (
-                    "order_source",
-                    "created_by",
-                    "delivery_method",
-                    "status",
-                    "notes",
-                )
-            },
-        ),
+        ("Detalles del Pedido", {"fields": ("delivery_method", "status", "notes")}),
         (
             "HU 4: Recogida en Sede",
             {"fields": ("pickup_date", "pickup_time"), "classes": ("collapse",)},
@@ -67,18 +60,7 @@ class OrderAdmin(admin.ModelAdmin):
         ),
         (
             "Entrega a Domicilio",
-            {
-                "fields": (
-                    "delivery_address",
-                    "delivery_latitude",
-                    "delivery_longitude",
-                    "delivery_distance_km",
-                    "address_validation_status",
-                    "address_validation_message",
-                    "delivery_maps_url",
-                ),
-                "classes": ("collapse",),
-            },
+            {"fields": ("delivery_address",), "classes": ("collapse",)},
         ),
         ("Información Financiera", {"fields": ("total_amount",)}),
         (
@@ -95,15 +77,19 @@ class OrderItemAdmin(admin.ModelAdmin):
     search_fields = ("order__customer_name", "product__name")
 
 
-@admin.register(DeliveryCoverageSettings)
-class DeliveryCoverageSettingsAdmin(admin.ModelAdmin):
+@admin.register(OrderAvailabilityConfig)
+class OrderAvailabilityConfigAdmin(admin.ModelAdmin):
     list_display = (
-        "name",
-        "local_latitude",
-        "local_longitude",
-        "max_delivery_km",
-        "is_enabled",
+        "pickup_weekday_open",
+        "pickup_weekday_close",
+        "delivery_weekday_open",
+        "delivery_weekday_close",
         "updated_at",
     )
-    list_filter = ("is_enabled",)
-    search_fields = ("name", "coverage_note")
+
+
+@admin.register(RestrictedDate)
+class RestrictedDateAdmin(admin.ModelAdmin):
+    list_display = ("date", "applies_to", "is_active", "reason")
+    list_filter = ("applies_to", "is_active")
+    search_fields = ("reason",)
