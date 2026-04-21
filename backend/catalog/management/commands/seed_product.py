@@ -12,12 +12,8 @@ def should_be_featured(product_name: str) -> bool:
     if "desayuno" in name:
         return False
 
-    is_empanada_caucana = (
-        ("empanada caucana" in name or "empanadas caucanas" in name)
-    )
-    is_chuzo_res_cerdo = "chuzo" in name and (
-        "res" in name or "cerdo" in name
-    )
+    is_empanada_caucana = "empanada caucana" in name or "empanadas caucanas" in name
+    is_chuzo_res_cerdo = "chuzo" in name and ("res" in name or "cerdo" in name)
     # Compatibilidad con el catálogo actual donde hay productos de chorizo pollo/cerdo.
     is_chorizo_cerdo = "chorizo" in name and ("cerdo" in name or "pollo" in name)
     is_chicharron_chocolo = "chicharr" in name

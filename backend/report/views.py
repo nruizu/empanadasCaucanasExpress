@@ -139,7 +139,9 @@ def _filtered_sales_queryset(request):
     end_date = _parse_date(request.query_params.get("end_date"), "end_date")
 
     if start_date and end_date and end_date < start_date:
-        raise serializers.ValidationError({"end_date": "Debe ser mayor o igual a start_date."})
+        raise serializers.ValidationError(
+            {"end_date": "Debe ser mayor o igual a start_date."}
+        )
 
     status_value = request.query_params.get("status")
     if status_value:
@@ -191,7 +193,9 @@ class AdminSalesMetricsView(APIView):
         )
         total_orders = queryset.count()
         total_sold = Decimal(str(aggregates["total_sold"]))
-        average_ticket = (total_sold / total_orders) if total_orders else Decimal("0.00")
+        average_ticket = (
+            (total_sold / total_orders) if total_orders else Decimal("0.00")
+        )
 
         by_delivery_method = []
         for delivery_method in ("pickup", "delivery", "scheduled"):
@@ -218,7 +222,8 @@ class AdminSalesMetricsView(APIView):
                     "end_date": request.query_params.get("end_date") or None,
                     "status": request.query_params.get("status") or None,
                     "order_source": request.query_params.get("order_source") or None,
-                    "delivery_method": request.query_params.get("delivery_method") or None,
+                    "delivery_method": request.query_params.get("delivery_method")
+                    or None,
                     "time_basis": request.query_params.get("time_basis") or None,
                 },
                 "total_sold": str(total_sold),
@@ -233,7 +238,9 @@ class AdminManualSaleRegisterView(APIView):
     permission_classes = (IsAdminUser,)
 
     def post(self, request):
-        serializer = ManualSaleSerializer(data=request.data, context={"request": request})
+        serializer = ManualSaleSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         order = serializer.save()
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)

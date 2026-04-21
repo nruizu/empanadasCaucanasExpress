@@ -27,7 +27,6 @@ from .serializers import (
 )
 from .services.delivery_geo import validate_delivery_address
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -295,7 +294,9 @@ class AdminDeliveryCoverageSettingsView(APIView):
         try:
             saved = serializer.save()
         except serializers.ValidationError as exc:
-            error_detail = exc.detail if isinstance(exc.detail, dict) else {"detail": exc.detail}
+            error_detail = (
+                exc.detail if isinstance(exc.detail, dict) else {"detail": exc.detail}
+            )
             logger.warning(
                 "Admin delivery coverage save failed",
                 extra={

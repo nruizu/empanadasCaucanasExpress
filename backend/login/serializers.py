@@ -9,7 +9,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     # it should be write-only to prevent it from being returned in responses
     # and have a minimum length of 8 characters
     password = serializers.CharField(write_only=True, min_length=8)
-    email = serializers.EmailField(required=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
     full_name = serializers.CharField(write_only=True, max_length=255)
     phone = serializers.CharField(write_only=True, max_length=30)
     address = serializers.CharField(write_only=True, max_length=255)
@@ -41,6 +41,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     # function that is called when the serializer's save() method is invoked
     # it creates a new user instance using the validated data
     def create(self, validated_data):
+        email = validated_data.pop("email", "")
         full_name = validated_data.pop("full_name")
         phone = validated_data.pop("phone")
         address = validated_data.pop("address")
@@ -50,7 +51,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(
             username=validated_data["username"],
-            email=validated_data["email"],
+            email=email,
             password=validated_data["password"],
         )
 
@@ -116,7 +117,7 @@ class UserMeSerializer(serializers.ModelSerializer):
 
 
 class UserAccountUpdateSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=False)
+    email = serializers.EmailField(required=False, allow_blank=True)
     full_name = serializers.CharField(required=False, max_length=255)
     phone = serializers.CharField(required=False, max_length=30)
     address = serializers.CharField(required=False, max_length=255)

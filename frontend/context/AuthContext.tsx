@@ -24,6 +24,9 @@ interface AuthContextType {
     full_name: string,
     phone: string,
     address: string,
+    delivery_local_address?: string,
+    delivery_city?: string,
+    delivery_region?: string,
   ) => Promise<unknown>;
 }
 
@@ -114,6 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       full_name: string,
       phone: string,
       address: string,
+      delivery_local_address = "",
+      delivery_city = "",
+      delivery_region = "",
     ) => {
       const data = await authApi.register({
         username,
@@ -122,6 +128,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         full_name,
         phone,
         address,
+        delivery_local_address,
+        delivery_city,
+        delivery_region,
       }); // si falla, throw llega al catch de RegisterPage
       saveToken(data.token);
       setUser({

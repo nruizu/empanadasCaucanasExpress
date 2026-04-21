@@ -109,13 +109,19 @@ export async function register({
   full_name,
   phone,
   address,
+  delivery_local_address,
+  delivery_city,
+  delivery_region,
 }: {
   username: string;
   password: string;
-  email: string;
+  email?: string;
   full_name: string;
   phone: string;
   address: string;
+  delivery_local_address?: string;
+  delivery_city?: string;
+  delivery_region?: string;
 }) {
   const res = await fetch(`${API_BASE_URL}/auth/registro/`, {
     method: "POST",
@@ -123,10 +129,13 @@ export async function register({
     body: JSON.stringify({
       username,
       password,
-      email,
+      email: email ?? "",
       full_name,
       phone,
       address,
+      delivery_local_address: delivery_local_address ?? "",
+      delivery_city: delivery_city ?? "",
+      delivery_region: delivery_region ?? "",
     }),
   });
 

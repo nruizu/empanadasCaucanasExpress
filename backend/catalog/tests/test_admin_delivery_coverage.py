@@ -155,7 +155,9 @@ class AdminDeliveryCoverageSettingsApiTests(TestCase):
         self.assertEqual(str(coverage.max_delivery_km), "30.00")
 
     @patch("backend.catalog.serializers.geocode_address")
-    def test_admin_replaces_previous_coordinates_when_address_changes(self, mock_geocode):
+    def test_admin_replaces_previous_coordinates_when_address_changes(
+        self, mock_geocode
+    ):
         mock_geocode.return_value = (Decimal("6.2400000"), Decimal("-75.6200000"))
         self._auth_admin()
 

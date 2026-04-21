@@ -64,53 +64,51 @@ def _expand_colombian_abbreviations(text: str) -> str:
     """Expande abreviaciones comunes en direcciones colombianas."""
     replacements = {
         # Prefijos de vía
-        r'\bcra\b': 'carrera',
-        r'\bcarr\b': 'carrera',
-        r'\bkra\b': 'carrera',
-        r'\bkr\b': 'carrera',
-        r'\bcl\b': 'calle',
-        r'\bcll\b': 'calle',
-        r'\bav\b': 'avenida',
-        r'\bave\b': 'avenida',
-        r'\baven\b': 'avenida',
-        r'\bdiag\b': 'diagonal',
-        r'\btransv\b': 'transversal',
-        r'\btv\b': 'transversal',
-        r'\bcir\b': 'circular',
-        r'\bcirc\b': 'circular',
-        r'\baut\b': 'autopista',
-        r'\bvte\b': 'variante',
-        
+        r"\bcra\b": "carrera",
+        r"\bcarr\b": "carrera",
+        r"\bkra\b": "carrera",
+        r"\bkr\b": "carrera",
+        r"\bcl\b": "calle",
+        r"\bcll\b": "calle",
+        r"\bav\b": "avenida",
+        r"\bave\b": "avenida",
+        r"\baven\b": "avenida",
+        r"\bdiag\b": "diagonal",
+        r"\btransv\b": "transversal",
+        r"\btv\b": "transversal",
+        r"\bcir\b": "circular",
+        r"\bcirc\b": "circular",
+        r"\baut\b": "autopista",
+        r"\bvte\b": "variante",
         # Puntos cardinales
-        r'\bn\b': 'norte',
-        r'\bs\b': 'sur',
-        r'\be\b': 'este',
-        r'\bo\b': 'oeste',
-        
+        r"\bn\b": "norte",
+        r"\bs\b": "sur",
+        r"\be\b": "este",
+        r"\bo\b": "oeste",
         # Otros
-        r'\bapto\b': 'apartamento',
-        r'\bapt\b': 'apartamento',
-        r'\bint\b': 'interior',
-        r'\bmz\b': 'manzana',
-        r'\bblq\b': 'bloque',
-        r'\bed\b': 'edificio',
+        r"\bapto\b": "apartamento",
+        r"\bapt\b": "apartamento",
+        r"\bint\b": "interior",
+        r"\bmz\b": "manzana",
+        r"\bblq\b": "bloque",
+        r"\bed\b": "edificio",
     }
-    
+
     expanded = text.lower()
     for pattern, replacement in replacements.items():
         expanded = re.sub(pattern, replacement, expanded)
-    
+
     return expanded
 
 
 def _clean_address_for_geocoding(address: str) -> str:
     """Limpia y normaliza una dirección para geocodificación."""
     # Remover caracteres especiales comunes que causan problemas
-    cleaned = address.replace('#', ' ')
-    cleaned = cleaned.replace('-', ' ')
-    cleaned = cleaned.replace('  ', ' ')
+    cleaned = address.replace("#", " ")
+    cleaned = cleaned.replace("-", " ")
+    cleaned = cleaned.replace("  ", " ")
     cleaned = cleaned.strip()
-    
+
     return cleaned
 
 
@@ -144,12 +142,12 @@ def build_address_queries(raw_address: str) -> list[str]:
     add_query(expanded_normalized)
 
     lower_input = clean_address.lower()
-    
+
     # Query 5: Forzar El Retiro si no está mencionado
     if "retiro" not in lower_input and "antioquia" not in lower_input:
         add_query(f"{clean_address}, El Retiro, Antioquia, Colombia")
         add_query(f"{expanded}, El Retiro, Antioquia, Colombia")
-    
+
     # También incluir "El Retiro" sin "El" para búsquedas más flexibles
     if "retiro" not in lower_input:
         add_query(f"{clean_address}, Retiro, Antioquia, Colombia")
@@ -162,43 +160,62 @@ def build_address_queries(raw_address: str) -> list[str]:
             street_only = parts[0]
             street_expanded = _expand_colombian_abbreviations(street_only)
             street_cleaned = _clean_address_for_geocoding(street_expanded)
-            
+
             # Probar solo la calle con Medellín
             add_query(f"{street_cleaned}, Medellin, Antioquia, Colombia")
             add_query(f"{street_only}, Medellin, Antioquia, Colombia")
-            
+
             # Si hay barrio/vereda mencionado en la segunda parte
             if len(parts) > 1:
                 neighborhood = parts[1].strip()
-                add_query(f"{street_cleaned}, {neighborhood}, El Retiro, Antioquia, Colombia")
-                add_query(f"{street_only}, {neighborhood}, El Retiro, Antioquia, Colombia")
+                add_query(
+                    f"{street_cleaned}, {neighborhood}, El Retiro, Antioquia, Colombia"
+                )
+                add_query(
+                    f"{street_only}, {neighborhood}, El Retiro, Antioquia, Colombia"
+                )
 
     # Query 7: Extraer solo números de vía (útil para "Calle 24 # 20-21")
     street_number_match = re.search(
-        r'(calle|carrera|avenida|diagonal|transversal|circular|cra|cl|av)\s*(\d+[a-z]?)\s*#?\s*(\d+[a-z]?)\s*-?\s*(\d+)?',
-        clean_address.lower()
+        r"(calle|carrera|avenida|diagonal|transversal|circular|cra|cl|av)"
+        r"\s*(\d+[a-z]?)\s*#?\s*(\d+[a-z]?)\s*-?\s*(\d+)?",
+        clean_address.lower(),
     )
     if street_number_match:
         via_type = street_number_match.group(1)
         via_number = street_number_match.group(2)
         cross_number = street_number_match.group(3)
-        
+
         # Expandir tipo de vía
         via_expanded = _expand_colombian_abbreviations(via_type)
-        
+
         simple_address = f"{via_expanded} {via_number} {cross_number}"
         add_query(f"{simple_address}, El Retiro, Antioquia, Colombia")
 
     # Query 8: Variantes específicas de veredas y sectores de El Retiro, Antioquia
     known_areas = [
-        'pantanillo', 'la cuchilla', 'salazar', 'el pantanillo', 'la fe',
-        'el carmelo', 'cruz verde', 'la playa', 'san jose', 'el chuscal',
-        'la doctora', 'la mesa', 'la palma', 'parte central', 'centro',
-        'parque principal', 'la plazuela', 'sector urbano'
+        "pantanillo",
+        "la cuchilla",
+        "salazar",
+        "el pantanillo",
+        "la fe",
+        "el carmelo",
+        "cruz verde",
+        "la playa",
+        "san jose",
+        "el chuscal",
+        "la doctora",
+        "la mesa",
+        "la palma",
+        "parte central",
+        "centro",
+        "parque principal",
+        "la plazuela",
+        "sector urbano",
     ]
-    
+
     for area in known_areas:
-        if area in lower_input or area.replace(' ', '') in lower_input.replace(' ', ''):
+        if area in lower_input or area.replace(" ", "") in lower_input.replace(" ", ""):
             # Intentar con el sector/vereda si la dirección es confusa
             if len(parts) > 0:
                 add_query(f"{parts[0]}, {area}, El Retiro, Antioquia, Colombia")
@@ -262,14 +279,14 @@ def _geocode_with_nominatim(address_query: str) -> tuple[Decimal, Decimal]:
         return Decimal(cached_value["lat"]), Decimal(cached_value["lon"])
 
     country_code = getattr(settings, "NOMINATIM_COUNTRY_CODE", "co")
-    
+
     # Mejorar el query a Nominatim con más detalles
     url = (
         f"{base_url}?q={quote_plus(address_query)}&format=json&limit=3"
         f"&addressdetails=1&countrycodes={quote_plus(country_code)}"
         "&accept-language=es"
     )
-    
+
     parsed_url = urlsplit(url)
     if parsed_url.scheme not in {"http", "https"}:
         raise DeliveryValidationError("El servicio de mapas tiene un esquema invalido")
@@ -304,37 +321,41 @@ def _geocode_with_nominatim(address_query: str) -> tuple[Decimal, Decimal]:
     # Filtrar resultados para priorizar El Retiro, Antioquia
     filtered_results = []
     for result in payload:
-        address_details = result.get('address', {})
-        city = address_details.get('city', '').lower()
-        town = address_details.get('town', '').lower()
-        municipality = address_details.get('municipality', '').lower()
-        village = address_details.get('village', '').lower()
-        county = address_details.get('county', '').lower()
-        state = address_details.get('state', '').lower()
-        
+        address_details = result.get("address", {})
+        city = address_details.get("city", "").lower()
+        town = address_details.get("town", "").lower()
+        municipality = address_details.get("municipality", "").lower()
+        village = address_details.get("village", "").lower()
+        county = address_details.get("county", "").lower()
+        state = address_details.get("state", "").lower()
+
         # Priorizar resultados de El Retiro, Antioquia
-        is_retiro = any([
-            'retiro' in city,
-            'retiro' in town,
-            'retiro' in municipality,
-            'retiro' in village,
-            'retiro' in county,
-        ])
-        
-        is_antioquia = 'antioquia' in state
-        
+        is_retiro = any(
+            [
+                "retiro" in city,
+                "retiro" in town,
+                "retiro" in municipality,
+                "retiro" in village,
+                "retiro" in county,
+            ]
+        )
+
+        is_antioquia = "antioquia" in state
+
         if is_retiro and is_antioquia:
             filtered_results.insert(0, result)  # Máxima prioridad
         elif is_retiro:
-            filtered_results.insert(len([r for r in filtered_results if 'retiro' in str(r).lower()]), result)
+            filtered_results.insert(
+                len([r for r in filtered_results if "retiro" in str(r).lower()]), result
+            )
         elif is_antioquia:
             filtered_results.append(result)
         else:
             filtered_results.append(result)
-    
+
     # Usar el mejor resultado disponible
     best_result = filtered_results[0] if filtered_results else payload[0]
-    
+
     lat = Decimal(best_result["lat"]).quantize(Decimal("0.0000001"))
     lon = Decimal(best_result["lon"]).quantize(Decimal("0.0000001"))
 
@@ -365,7 +386,7 @@ def build_local_origin_query(settings_obj: DeliveryCoverageSettings) -> str:
 
 def geocode_address(raw_address: str) -> tuple[Decimal, Decimal]:
     queries = build_address_queries(raw_address)
-    
+
     last_error = None
 
     for query in queries:
@@ -386,7 +407,7 @@ def geocode_address(raw_address: str) -> tuple[Decimal, Decimal]:
         error_message = str(last_error)
     else:
         error_message = "No se encontró la dirección"
-    
+
     raise DeliveryValidationError(
         f"{error_message}. "
         "Intenta incluir más detalles como vereda, sector o referencias cercanas "
@@ -428,13 +449,26 @@ def validate_delivery_address(address: str) -> DeliveryValidationResult:
         settings_obj = get_active_delivery_settings()
 
         # Verificación de ciudad más flexible
-        if settings_obj.local_city and not _address_mentions_city(clean_address, settings_obj.local_city):
+        if settings_obj.local_city and not _address_mentions_city(
+            clean_address, settings_obj.local_city
+        ):
             # Si la dirección no menciona El Retiro, asumimos que es local
             # Solo advertir si explícitamente menciona otra ciudad importante
             other_cities = [
-                'bogota', 'bogotá', 'medellin', 'medellín', 'cali', 'barranquilla', 
-                'cartagena', 'bucaramanga', 'envigado', 'rionegro', 'marinilla',
-                'guarne', 'carmen de viboral', 'la ceja'
+                "bogota",
+                "bogotá",
+                "medellin",
+                "medellín",
+                "cali",
+                "barranquilla",
+                "cartagena",
+                "bucaramanga",
+                "envigado",
+                "rionegro",
+                "marinilla",
+                "guarne",
+                "carmen de viboral",
+                "la ceja",
             ]
             address_lower = clean_address.lower()
             if any(city in address_lower for city in other_cities):
@@ -458,21 +492,16 @@ def validate_delivery_address(address: str) -> DeliveryValidationResult:
     except DeliveryValidationError as exc:
         error_str = str(exc)
         if "No se encontr" in error_str or "not-found" in error_str:
-            return DeliveryValidationResult(
-                status="invalid", 
-                message=error_str
-            )
-        return DeliveryValidationResult(
-            status="service_error", 
-            message=error_str
-        )
+            return DeliveryValidationResult(status="invalid", message=error_str)
+        return DeliveryValidationResult(status="service_error", message=error_str)
 
     if distance_km > settings_obj.max_delivery_km:
         return DeliveryValidationResult(
             status="out_of_coverage",
             message=(
                 f"La direccion esta fuera del area de cobertura. "
-                f"Distancia: {distance_km} km (máximo: {settings_obj.max_delivery_km} km)"
+                f"Distancia: {distance_km} km "
+                f"(máximo: {settings_obj.max_delivery_km} km)"
             ),
             latitude=lat,
             longitude=lon,

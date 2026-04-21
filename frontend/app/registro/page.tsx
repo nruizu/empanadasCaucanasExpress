@@ -11,6 +11,9 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [deliveryLocalAddress, setDeliveryLocalAddress] = useState("");
+  const [deliveryCity, setDeliveryCity] = useState("");
+  const [deliveryRegion, setDeliveryRegion] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +28,9 @@ export default function RegisterPage() {
         fullName,
         phone,
         address,
+        deliveryLocalAddress,
+        deliveryCity,
+        deliveryRegion,
       );
       router.push('/catalogo');
     } catch (err: any) {
@@ -82,9 +88,29 @@ export default function RegisterPage() {
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Direccion"
+              placeholder="Direccion principal"
               className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2.5 outline-none focus:border-[var(--primary)]"
             />
+            <input
+              value={deliveryLocalAddress}
+              onChange={(e) => setDeliveryLocalAddress(e.target.value)}
+              placeholder="Direccion de domicilio (opcional)"
+              className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2.5 outline-none focus:border-[var(--primary)]"
+            />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <input
+                value={deliveryCity}
+                onChange={(e) => setDeliveryCity(e.target.value)}
+                placeholder="Ciudad de domicilio (opcional)"
+                className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2.5 outline-none focus:border-[var(--primary)]"
+              />
+              <input
+                value={deliveryRegion}
+                onChange={(e) => setDeliveryRegion(e.target.value)}
+                placeholder="Departamento de domicilio (opcional)"
+                className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2.5 outline-none focus:border-[var(--primary)]"
+              />
+            </div>
             <input
               type="password"
               value={password}

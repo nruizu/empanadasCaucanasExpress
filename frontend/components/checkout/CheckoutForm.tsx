@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
+import * as authApi from "@/lib/auth-api";
 import * as cartApi from "@/lib/cart-api";
 import { getOrderAvailability, type PublicOrderAvailability } from "@/lib/catalog-api";
 import {
@@ -29,6 +30,7 @@ interface CartSnapshot {
 interface CheckoutFormData {
   customer_name: string;
   customer_phone: string;
+  customer_email: string;
   delivery_method: "pickup" | "delivery" | "scheduled";
   pickup_date: string;
   pickup_time: string;
@@ -61,6 +63,7 @@ export default function CheckoutForm() {
   const [formData, setFormData] = useState<CheckoutFormData>({
     customer_name: "",
     customer_phone: "",
+    customer_email: "",
     delivery_method: "pickup",
     pickup_date: "",
     pickup_time: "",
@@ -217,6 +220,9 @@ export default function CheckoutForm() {
       const orderPayload = {
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
+        ...(formData.customer_email.trim() && {
+          customer_email: formData.customer_email.trim(),
+        }),
         delivery_method: formData.delivery_method,
         status: "pending",
         ...(formData.delivery_method === "pickup" && {
@@ -333,6 +339,48 @@ export default function CheckoutForm() {
     isPickupSunday
       ? `Hora de recogida * (domingo: ${formatTime12h(availability?.pickup_sunday_open ?? "08:00:00")} - ${formatTime12h(availability?.pickup_sunday_close ?? "20:00:00")})`
       : `Hora de recogida * (lunes a sábado: ${formatTime12h(availability?.pickup_weekday_open ?? "09:00:00")} - ${formatTime12h(availability?.pickup_weekday_close ?? "20:00:00")})`;
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadAccountDefaults = async () => {
+      try {
+        const me = await authApi.me(token);
+        if (cancelled) return;
+
+        const deliveryParts = [
+          me.delivery_local_address?.trim() || "",
+          me.delivery_city?.trim() || "",
+          me.delivery_region?.trim() || "",
+        ].filter(Boolean);
+
+        const preferredDeliveryAddress =
+          deliveryParts.length > 0
+            ? deliveryParts.join(", ")
+            : (me.address || "").trim();
+
+        setFormData((prev) => ({
+          ...prev,
+          customer_name: prev.customer_name || me.full_name || "",
+          customer_phone: prev.customer_phone || me.phone || "",
+          customer_email: prev.customer_email || me.email || "",
+          delivery_address: prev.delivery_address || preferredDeliveryAddress,
+        }));
+      } catch {
+        // Keep checkout usable even if profile loading fails.
+      }
+    };
+
+    void loadAccountDefaults();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   useEffect(() => {
     const loadAvailability = async () => {

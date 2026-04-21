@@ -155,7 +155,8 @@ class OrderSerializer(serializers.ModelSerializer):
             editable_fields = [
                 field.name
                 for field in Order._meta.fields
-                if field.editable and field.name not in {"id", "created_at", "updated_at"}
+                if field.editable
+                and field.name not in {"id", "created_at", "updated_at"}
             ]
             merged_data = {
                 field_name: getattr(self.instance, field_name)
@@ -338,7 +339,9 @@ class DeliveryCoverageSettingsSerializer(serializers.ModelSerializer):
                 mutable_data[field_name] = None
 
         if isinstance(mutable_data.get("max_delivery_km"), str):
-            mutable_data["max_delivery_km"] = mutable_data["max_delivery_km"].replace(",", ".")
+            mutable_data["max_delivery_km"] = mutable_data["max_delivery_km"].replace(
+                ",", "."
+            )
 
         if not mutable_data.get("local_country"):
             mutable_data["local_country"] = "Colombia"

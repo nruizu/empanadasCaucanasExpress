@@ -117,7 +117,9 @@ class RestrictedDate(models.Model):
     ]
 
     date = models.DateField()
-    applies_to = models.CharField(max_length=20, choices=APPLIES_TO_CHOICES, default="all")
+    applies_to = models.CharField(
+        max_length=20, choices=APPLIES_TO_CHOICES, default="all"
+    )
     reason = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -261,10 +263,14 @@ class Order(models.Model):
 
     @staticmethod
     def _is_restricted_date(target_date, method: str):
-        return RestrictedDate.objects.filter(
-            date=target_date,
-            is_active=True,
-        ).filter(models.Q(applies_to="all") | models.Q(applies_to=method)).first()
+        return (
+            RestrictedDate.objects.filter(
+                date=target_date,
+                is_active=True,
+            )
+            .filter(models.Q(applies_to="all") | models.Q(applies_to=method))
+            .first()
+        )
 
     @property
     def estimated_delivery_time(self):
@@ -303,9 +309,7 @@ class Order(models.Model):
                 if global_restriction_today.reason
                 else ""
             )
-            raise ValidationError(
-                f"No hay servicio de pedidos para hoy.{reason}"
-            )
+            raise ValidationError(f"No hay servicio de pedidos para hoy.{reason}")
 
         # HU 4: Validar horario de recogida en sede.
         # Lunes a sábado: 9:00 AM - 8:00 PM.
@@ -318,7 +322,8 @@ class Order(models.Model):
             if restricted:
                 reason = f" Motivo: {restricted.reason}" if restricted.reason else ""
                 raise ValidationError(
-                    f"No hay servicio de recogida en sede para la fecha seleccionada.{reason}"
+                    "No hay servicio de recogida en sede para la fecha "
+                    f"seleccionada.{reason}"
                 )
 
             opening_time, closing_time = self._get_pickup_window(
@@ -329,10 +334,12 @@ class Order(models.Model):
             if not (opening_time <= self.pickup_time <= closing_time):
                 if self.pickup_date.weekday() == 6:
                     raise ValidationError(
-                        "La recogida en sede el domingo está fuera del horario configurado"
+                        "La recogida en sede el domingo está fuera del "
+                        "horario configurado"
                     )
                 raise ValidationError(
-                    "La recogida en sede de lunes a sábado está fuera del horario configurado"
+                    "La recogida en sede de lunes a sábado está fuera del "
+                    "horario configurado"
                 )
 
         # HU 5: Validar que la fecha programada sea futura
@@ -344,10 +351,13 @@ class Order(models.Model):
             if restricted:
                 reason = f" Motivo: {restricted.reason}" if restricted.reason else ""
                 raise ValidationError(
-                    f"No se permiten pedidos programados para la fecha seleccionada.{reason}"
+                    "No se permiten pedidos programados para la fecha "
+                    f"seleccionada.{reason}"
                 )
         elif self.delivery_method == "scheduled":
-            raise ValidationError("Debe especificar una fecha para el pedido programado")
+            raise ValidationError(
+                "Debe especificar una fecha para el pedido programado"
+            )
 
         # HU Domicilio: validar dirección, modalidad y horario de operación.
         # Lunes a sábado: 9:00 AM - 7:30 PM.
@@ -370,9 +380,7 @@ class Order(models.Model):
             restricted = self._is_restricted_date(now_local.date(), "delivery")
             if restricted:
                 reason = f" Motivo: {restricted.reason}" if restricted.reason else ""
-                raise ValidationError(
-                    f"No hay servicio de domicilio para hoy.{reason}"
-                )
+                raise ValidationError(f"No hay servicio de domicilio para hoy.{reason}")
 
             opening_time, closing_time = self._get_delivery_window(
                 config,
