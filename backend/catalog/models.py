@@ -5,6 +5,9 @@ from django.utils import timezone
 from datetime import time
 import re
 
+from backend.login.models import UserProfile
+from backend.login.utils import get_user_profile
+
 
 class Category(models.Model):
     name = models.CharField(max_length=120)
@@ -178,6 +181,14 @@ class Order(models.Model):
         on_delete=models.SET_NULL,
         related_name="created_orders",
     )
+    assigned_courier = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="assigned_orders",
+    )
+    assigned_at = models.DateTimeField(blank=True, null=True)
     order_source = models.CharField(
         max_length=20,
         choices=[("online", "Online"), ("manual", "Manual")],
@@ -280,7 +291,8 @@ class Order(models.Model):
 
     def clean(self):
         """
-        Validaciones personalizadas
+        Validaciones básicas (teléfono, courier)
+        No validar horarios ni disponibilidad - eso es responsabilidad del serializer en create
         """
         super().clean()
 
@@ -290,6 +302,18 @@ class Order(models.Model):
                 "El teléfono debe contener solo números (7 a 15 dígitos)"
             )
 
+        if self.assigned_courier_id:
+            profile = get_user_profile(self.assigned_courier)
+            if profile is None or profile.role != UserProfile.ROLE_COURIER:
+                raise ValidationError(
+                    {"assigned_courier": "El usuario seleccionado no es un repartidor."}
+                )
+
+    def validate_for_creation(self):
+        """
+        Validaciones completas para creación de nuevos pedidos.
+        Incluye verificaciones de horario, disponibilidad, fechas, etc.
+        """
         config = OrderAvailabilityConfig.get_solo()
         now_local = timezone.localtime()
 

@@ -11,10 +11,12 @@ import * as authApi from "@/lib/auth-api";
 
 const TOKEN_KEY = "cce_token";
 
+type UserRole = "customer" | "courier";
+
 interface AuthContextType {
   token: string | null;
   authReady: boolean;
-  user: { id: number; username: string; is_staff: boolean } | null;
+  user: { id: number; username: string; is_staff: boolean; role: UserRole } | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (
@@ -39,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     id: number;
     username: string;
     is_staff: boolean;
+    role: UserRole;
   } | null>(null);
   const saveToken = useCallback((t: string | null) => {
     setToken(t);
@@ -73,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: data.user_id,
           username: data.username,
           is_staff: Boolean(data.is_staff),
+          role: data.role,
         });
       } catch {
         if (cancelled) return;
@@ -96,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: data.user_id,
         username: data.username,
         is_staff: Boolean(data.is_staff),
+        role: data.role,
       });
       window.dispatchEvent(new CustomEvent("auth:changed"));
     },
@@ -137,6 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: data.user_id,
         username: data.username,
         is_staff: Boolean(data.is_staff),
+        role: data.role,
       });
       window.dispatchEvent(new CustomEvent("auth:changed"));
       return data;

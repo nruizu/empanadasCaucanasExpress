@@ -35,6 +35,24 @@ export interface AdminOrdersQuery {
   search?: string;
 }
 
+export interface AdminCourierOption {
+  id: number;
+  username: string;
+  full_name: string;
+  role: "courier";
+}
+
+export interface UpdateAdminOrderPayload {
+  status?:
+    | "pending"
+    | "confirmed"
+    | "preparing"
+    | "ready"
+    | "completed"
+    | "cancelled";
+  assigned_courier?: number | null;
+}
+
 export async function getAdminOrders(query: AdminOrdersQuery = {}) {
   const token = getToken();
   const params = new URLSearchParams();
@@ -77,6 +95,13 @@ export async function updateAdminOrderStatus(
     | "completed"
     | "cancelled",
 ) {
+  return updateAdminOrder(orderId, { status });
+}
+
+export async function updateAdminOrder(
+  orderId: number,
+  payload: UpdateAdminOrderPayload,
+) {
   const token = getToken();
 
   const response = await fetch(`${API_BASE_URL}/orders/${orderId}/`, {
@@ -85,7 +110,7 @@ export async function updateAdminOrderStatus(
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Token ${token}` } : {}),
     },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -94,11 +119,33 @@ export async function updateAdminOrderStatus(
       body.detail ||
       body.error ||
       body.status?.[0] ||
+      body.assigned_courier?.[0] ||
       "No se pudo actualizar el estado";
     throw new AdminOrdersApiError(message, response.status);
   }
 
   return (await response.json()) as OrderHistoryItem;
+}
+
+export async function getAdminCouriers() {
+  const token = getToken();
+
+  const response = await fetch(`${API_BASE_URL}/auth/admin/couriers/`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Token ${token}` } : {}),
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const message = body.detail || body.error || "Error al consultar repartidores";
+    throw new AdminOrdersApiError(message, response.status);
+  }
+
+  return (await response.json()) as AdminCourierOption[];
 }
 
 export async function deleteAdminOrder(orderId: number) {

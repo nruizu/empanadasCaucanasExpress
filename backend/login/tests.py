@@ -24,9 +24,11 @@ class LoginViewTest(APITestCase):
         self.assertIn("user_id", response.data)
         self.assertIn("username", response.data)
         self.assertIn("is_staff", response.data)
+        self.assertIn("role", response.data)
         self.assertEqual(response.data["username"], "testuser")
         self.assertEqual(response.data["user_id"], self.user.id)
         self.assertFalse(response.data["is_staff"])
+        self.assertEqual(response.data["role"], "customer")
 
     def test_login_token_is_persisted_in_database(self):
         data = {"username": "testuser", "password": "testpass123"}
@@ -115,6 +117,7 @@ class LoginViewTest(APITestCase):
         self.assertEqual(response.data["username"], "testuser")
         self.assertEqual(response.data["user_id"], self.user.id)
         self.assertFalse(response.data["is_staff"])
+        self.assertEqual(response.data["role"], "customer")
         self.assertIn("email", response.data)
         self.assertIn("full_name", response.data)
         self.assertIn("phone", response.data)
@@ -139,6 +142,111 @@ class LoginViewTest(APITestCase):
     def test_me_requires_authentication(self):
         response = self.client.get("/api/auth/me/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_admin_couriers_list_returns_only_couriers(self):
+        admin = User.objects.create_user(
+            username="admin-couriers",
+            email="admin-couriers@example.com",
+            password="adminpass123",
+            is_staff=True,
+        )
+        admin_token = Token.objects.create(user=admin)
+
+        courier = User.objects.create_user(
+            username="courier-user",
+            email="courier@example.com",
+            password="courierpass123",
+        )
+        UserProfile.objects.create(
+            user=courier,
+            role=UserProfile.ROLE_COURIER,
+            full_name="Repartidor Prueba",
+            phone="3008889999",
+            address="Calle 99 # 1-2",
+        )
+
+        customer = User.objects.create_user(
+            username="customer-user",
+            email="customer@example.com",
+            password="customerpass123",
+        )
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {admin_token.key}")
+        response = self.client.get("/api/auth/admin/couriers/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        usernames = [item["username"] for item in response.data]
+        self.assertIn(courier.username, usernames)
+        self.assertNotIn(customer.username, usernames)
+
+    def test_admin_users_patch_promote_to_courier_keeps_non_admin_flags(self):
+        admin = User.objects.create_user(
+            username="admin-role-mgmt",
+            email="admin-role-mgmt@example.com",
+            password="adminpass123",
+            is_staff=True,
+        )
+        admin_token = Token.objects.create(user=admin)
+
+        user = User.objects.create_user(
+            username="customer-role-mgmt",
+            email="customer-role-mgmt@example.com",
+            password="customerpass123",
+        )
+        UserProfile.objects.create(
+            user=user,
+            role=UserProfile.ROLE_CUSTOMER,
+            full_name="Cliente Gestion",
+            phone="3001112233",
+            address="Calle 1 # 2-3",
+        )
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {admin_token.key}")
+        response = self.client.patch(
+            f"/api/auth/admin/users/{user.id}/",
+            {"role": UserProfile.ROLE_COURIER},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user.refresh_from_db()
+        user_profile = UserProfile.objects.get(user=user)
+        self.assertEqual(user_profile.role, UserProfile.ROLE_COURIER)
+        self.assertFalse(user.is_staff)
+        self.assertFalse(user.is_superuser)
+
+    def test_admin_users_patch_rejects_admin_accounts(self):
+        super_admin = User.objects.create_user(
+            username="super-admin-role",
+            email="super-admin-role@example.com",
+            password="adminpass123",
+            is_staff=True,
+        )
+        UserProfile.objects.create(
+            user=super_admin,
+            role=UserProfile.ROLE_CUSTOMER,
+            full_name="Admin Role",
+            phone="3004445566",
+            address="Calle 10 # 20-30",
+        )
+
+        acting_admin = User.objects.create_user(
+            username="acting-admin",
+            email="acting-admin@example.com",
+            password="adminpass123",
+            is_staff=True,
+        )
+        acting_admin_token = Token.objects.create(user=acting_admin)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {acting_admin_token.key}")
+        response = self.client.patch(
+            f"/api/auth/admin/users/{super_admin.id}/",
+            {"role": UserProfile.ROLE_COURIER},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
 
     def test_me_patch_updates_account_data(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
@@ -189,6 +297,7 @@ class RegisterViewTest(APITestCase):
         self.assertIn("username", response.data)
         self.assertEqual(response.data["username"], "newuser")
         self.assertFalse(response.data["is_staff"])
+        self.assertEqual(response.data["role"], "customer")
 
     def test_register_creates_user_in_database(self):
         data = {
@@ -351,6 +460,7 @@ class RegisterViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         user = User.objects.get(username="newuser")
         profile = UserProfile.objects.get(user=user)
+        self.assertEqual(profile.role, "customer")
         self.assertEqual(profile.full_name, "Nuevo Usuario")
         self.assertEqual(profile.phone, "3001234567")
         self.assertEqual(profile.address, "Calle 10 # 20-30")

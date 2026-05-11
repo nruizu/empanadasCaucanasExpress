@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import * as cartApi from "@/lib/cart-api";
 
 export default function Navbar() {
@@ -45,7 +45,7 @@ export default function Navbar() {
     router.push("/");
   };
 
-  const handleSearch = (event: React.FormEvent) => {
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const query = searchQuery.trim();
     if (!query) {
@@ -201,23 +201,21 @@ export default function Navbar() {
                 ADMINISTRACIÓN
               </p>
               <nav className="mt-2 space-y-2">
-                <Link href="/admin/catalogo" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
-                  Gestión catálogo
+                <Link href="/admin" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
+                  Panel de administración
                 </Link>
-                <Link href="/admin/pedidos" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
-                  Gestión de pedidos
-                </Link>
-                <Link href="/admin/cobertura" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
-                  Cobertura domicilios
-                </Link>
-                <Link href="/admin/ventas" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
-                  Historial de ventas
-                </Link>
-                <Link href="/admin/reporte-ventas" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
-                  Reporte de ventas
-                </Link>
-                <Link href="/admin/horarios" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
-                  Gestión horarios
+              </nav>
+            </div>
+          )}
+
+          {token && user?.role === "courier" && !user?.is_staff && (
+            <div className="mt-auto border-t border-[color-mix(in_srgb,var(--muted)_35%,white)] pt-4">
+              <p className="px-4 text-xs font-semibold tracking-[0.08em] text-[var(--muted-foreground)]">
+                REPARTO
+              </p>
+              <nav className="mt-2 space-y-2">
+                <Link href="/repartidor/pedidos" onClick={() => setOpen(false)} className="block rounded-lg px-4 py-3 font-medium text-[var(--foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--secondary)_20%,transparent)]">
+                  Pedidos asignados
                 </Link>
               </nav>
             </div>

@@ -3,7 +3,7 @@ import logging
 from rest_framework import filters, generics, status
 from rest_framework import serializers
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -26,6 +26,7 @@ from .serializers import (
     OrderSerializer,
 )
 from .services.delivery_geo import validate_delivery_address
+from backend.login.permissions import IsCourierUser
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,11 @@ class OrderListCreateView(generics.ListCreateAPIView):
         return [AllowAny()]
 
     def get_queryset(self):
-        queryset = Order.objects.prefetch_related("items__product").all()
+        queryset = Order.objects.select_related(
+            "assigned_courier",
+            "assigned_courier__profile",
+            "created_by",
+        ).prefetch_related("items__product").all()
 
         # Filtros opcionales
         status = self.request.query_params.get("status")
@@ -154,7 +159,30 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
 
     serializer_class = OrderSerializer
-    queryset = Order.objects.prefetch_related("items__product").all()
+    permission_classes = (IsAdminUser,)
+    queryset = Order.objects.select_related(
+        "assigned_courier",
+        "assigned_courier__profile",
+        "created_by",
+    ).prefetch_related("items__product").all()
+
+
+class CourierAssignedOrderListView(generics.ListAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = (IsAuthenticated, IsCourierUser)
+    pagination_class = ProductPagination
+
+    def get_queryset(self):
+        return (
+            Order.objects.select_related(
+                "assigned_courier",
+                "assigned_courier__profile",
+                "created_by",
+            )
+            .prefetch_related("items__product")
+            .filter(assigned_courier=self.request.user)
+            .order_by("-created_at")
+        )
 
 
 class AdminOrderAvailabilityConfigView(generics.RetrieveUpdateAPIView):

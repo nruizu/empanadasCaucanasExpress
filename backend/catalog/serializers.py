@@ -1,11 +1,15 @@
 from rest_framework import serializers
 from decimal import Decimal
 from django.db import transaction
+from django.contrib.auth.models import User
+from django.utils import timezone
 from backend.catalog.services.delivery_geo import (
     DeliveryValidationError,
     geocode_address,
     validate_delivery_address,
 )
+from backend.login.models import UserProfile
+from backend.login.utils import get_user_profile
 from .models import (
     Category,
     DeliveryCoverageSettings,
@@ -103,6 +107,13 @@ class OrderItemCreateSerializer(serializers.Serializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     order_items = OrderItemCreateSerializer(many=True, write_only=True, required=False)
+    assigned_courier = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(profile__role=UserProfile.ROLE_COURIER),
+        allow_null=True,
+        required=False,
+    )
+    assigned_courier_display_name = serializers.SerializerMethodField()
+    assigned_at = serializers.DateTimeField(read_only=True)
 
     estimated_delivery_time = serializers.CharField(read_only=True)
     created_by_username = serializers.SerializerMethodField()
@@ -116,6 +127,9 @@ class OrderSerializer(serializers.ModelSerializer):
             "customer_email",
             "delivery_method",
             "status",
+            "assigned_courier",
+            "assigned_courier_display_name",
+            "assigned_at",
             "order_source",
             "created_by",
             "created_by_username",
@@ -144,14 +158,26 @@ class OrderSerializer(serializers.ModelSerializer):
             return obj.created_by.username
         return None
 
+    def get_assigned_courier_display_name(self, obj):
+        if not obj.assigned_courier_id or not obj.assigned_courier:
+            return None
+
+        profile = get_user_profile(obj.assigned_courier)
+        if profile and profile.full_name:
+            return profile.full_name
+        return obj.assigned_courier.username
+
     def validate(self, data):
         """
-        🔥 FIX: remover order_items antes de crear instancia del modelo
+        Validación de datos en el serializer.
+        - Para CREATE: valida completamente incluyendo horarios y disponibilidad
+        - Para UPDATE: solo valida datos básicos (teléfono, courier)
         """
         data_without_items = data.copy()
         data_without_items.pop("order_items", None)
 
         if self.instance:
+            # UPDATE: solo validación básica
             editable_fields = [
                 field.name
                 for field in Order._meta.fields
@@ -164,10 +190,13 @@ class OrderSerializer(serializers.ModelSerializer):
             }
             merged_data.update(data_without_items)
             instance = Order(**merged_data)
+            instance.clean()
         else:
+            # CREATE: validación completa
             instance = Order(**data_without_items)
+            instance.clean()
+            instance.validate_for_creation()
 
-        instance.clean()
         return data
 
     @staticmethod
@@ -190,6 +219,11 @@ class OrderSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop("order_items", [])
+
+        if validated_data.get("assigned_courier") and not validated_data.get(
+            "assigned_at"
+        ):
+            validated_data["assigned_at"] = timezone.now()
 
         self._validate_and_fill_delivery_data(
             validated_data,
@@ -222,6 +256,13 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         validated_data.pop("order_items", None)
+
+        if "assigned_courier" in validated_data:
+            next_assigned_courier = validated_data["assigned_courier"]
+            if next_assigned_courier is None:
+                instance.assigned_at = None
+            elif next_assigned_courier != instance.assigned_courier or not instance.assigned_at:
+                instance.assigned_at = timezone.now()
 
         effective_delivery_method = validated_data.get(
             "delivery_method", instance.delivery_method
