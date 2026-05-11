@@ -4,11 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import {
+  getAdminCouriers,
   deleteAdminOrder,
   getAdminOrders,
-  updateAdminOrderStatus,
+  updateAdminOrder,
 } from "@/lib/admin-orders-api";
 import type { OrderHistoryItem } from "@/lib/auth-api";
+import type { AdminCourierOption } from "@/lib/admin-orders-api";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente",
@@ -90,6 +92,10 @@ export default function AdminOrdersPage() {
   const [statusDrafts, setStatusDrafts] = useState<
     Record<number, OrderHistoryItem["status"]>
   >({});
+  const [courierDrafts, setCourierDrafts] = useState<
+    Record<number, number | "">
+  >({});
+  const [couriers, setCouriers] = useState<AdminCourierOption[]>([]);
   const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
   const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
 
@@ -145,6 +151,18 @@ export default function AdminOrdersPage() {
           {},
         ),
       );
+      setCourierDrafts(
+        (data.results || []).reduce(
+          (
+            acc: Record<number, number | "">,
+            order: OrderHistoryItem,
+          ) => {
+            acc[order.id] = order.assigned_courier ?? "";
+            return acc;
+          },
+          {},
+        ),
+      );
       setHasNext(Boolean(data.next));
       setHasPrevious(Boolean(data.previous));
     } catch (error: unknown) {
@@ -153,6 +171,17 @@ export default function AdminOrdersPage() {
       setLoading(false);
     }
   }, [canAccess, page, deliveryMethod, status, ordering, todayOnly, search]);
+
+  const loadCouriers = useCallback(async () => {
+    if (!canAccess) return;
+
+    try {
+      const data = await getAdminCouriers();
+      setCouriers(data || []);
+    } catch {
+      setCouriers([]);
+    }
+  }, [canAccess]);
 
   useEffect(() => {
     if (!authReady) {
@@ -170,12 +199,33 @@ export default function AdminOrdersPage() {
     }
 
     void loadOrders();
-  }, [token, authReady, user, router, loadOrders]);
+    void loadCouriers();
+  }, [token, authReady, user, router, loadOrders, loadCouriers]);
 
-  const handleSaveStatus = async (orderId: number) => {
+  const handleSaveOrder = async (orderId: number) => {
     const nextStatus = statusDrafts[orderId];
     const order = orders.find((item: OrderHistoryItem) => item.id === orderId);
-    if (!nextStatus || !order || order.status === nextStatus) {
+    if (!nextStatus || !order) {
+      return;
+    }
+
+    const nextCourier = courierDrafts[orderId] ?? "";
+    const currentCourier = order.assigned_courier ?? "";
+
+    const payload: {
+      status?: OrderHistoryItem["status"];
+      assigned_courier?: number | null;
+    } = {};
+
+    if (order.status !== nextStatus) {
+      payload.status = nextStatus;
+    }
+
+    if (nextCourier !== currentCourier) {
+      payload.assigned_courier = nextCourier === "" ? null : Number(nextCourier);
+    }
+
+    if (Object.keys(payload).length === 0) {
       return;
     }
 
@@ -189,7 +239,7 @@ export default function AdminOrdersPage() {
     setSuccess(null);
 
     try {
-      const updatedOrder = await updateAdminOrderStatus(orderId, nextStatus);
+      const updatedOrder = await updateAdminOrder(orderId, payload);
 
       setOrders((current: OrderHistoryItem[]) =>
         current.map((item: OrderHistoryItem) =>
@@ -202,8 +252,12 @@ export default function AdminOrdersPage() {
           [orderId]: updatedOrder.status,
         }),
       );
+      setCourierDrafts((current: Record<number, number | "">) => ({
+        ...current,
+        [orderId]: updatedOrder.assigned_courier ?? "",
+      }));
       setSuccess(
-        `Estado del pedido ${orderId} actualizado a ${STATUS_LABELS[updatedOrder.status]}.`,
+        `Pedido ${orderId} actualizado a ${STATUS_LABELS[updatedOrder.status]}.`,
       );
     } catch (error: unknown) {
       setError(
@@ -543,8 +597,7 @@ export default function AdminOrdersPage() {
                       onChange={(event) =>
                         setStatusDrafts((current) => ({
                           ...current,
-                          [order.id]: event.target
-                            .value as OrderHistoryItem["status"],
+                          [order.id]: event.target.value as OrderHistoryItem["status"],
                         }))
                       }
                       className={`rounded border px-3 py-1 text-sm ${
@@ -565,21 +618,44 @@ export default function AdminOrdersPage() {
                       <option value="completed">Completado</option>
                       <option value="cancelled">Cancelado</option>
                     </select>
+                    {order.delivery_method !== "pickup" && (
+                      <select
+                        value={courierDrafts[order.id] ?? order.assigned_courier ?? ""}
+                        onChange={(event) =>
+                          setCourierDrafts((current) => ({
+                            ...current,
+                            [order.id]:
+                              event.target.value === ""
+                                ? ""
+                                : Number(event.target.value),
+                          }))
+                        }
+                        className="rounded border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] bg-white px-3 py-1 text-sm"
+                      >
+                        <option value="">Sin repartidor</option>
+                        {couriers.map((courier) => (
+                          <option key={courier.id} value={courier.id}>
+                            {courier.full_name || courier.username}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <button
                       type="button"
-                      onClick={() => void handleSaveStatus(order.id)}
+                      onClick={() => void handleSaveOrder(order.id)}
                       disabled={
                         order.status === "cancelled" ||
                         deletingOrderId === order.id ||
                         updatingOrderId === order.id ||
-                        (statusDrafts[order.id] ?? order.status) ===
-                          order.status
+                        (statusDrafts[order.id] ?? order.status) === order.status &&
+                        (courierDrafts[order.id] ?? order.assigned_courier ?? "") ===
+                          (order.assigned_courier ?? "")
                       }
                       className="rounded bg-[var(--cce-green-dark)] px-3 py-1 text-sm font-semibold text-white disabled:opacity-50"
                     >
                       {updatingOrderId === order.id
                         ? "Guardando..."
-                        : "Guardar estado"}
+                        : "Guardar cambios"}
                     </button>
                     <button
                       type="button"
@@ -600,6 +676,13 @@ export default function AdminOrdersPage() {
                     <p className="mt-2 text-sm text-gray-500">
                       Este pedido fue cancelado y su estado ya no se puede
                       modificar.
+                    </p>
+                  )}
+
+                  {order.assigned_courier_display_name && (
+                    <p className="mt-2 text-sm text-gray-600">
+                      <strong>Repartidor:</strong> {order.assigned_courier_display_name}
+                      {order.assigned_at ? ` · Asignado ${formatDate(order.assigned_at)}` : ""}
                     </p>
                   )}
 
@@ -675,3 +758,4 @@ export default function AdminOrdersPage() {
     </main>
   );
 }
+

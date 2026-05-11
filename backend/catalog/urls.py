@@ -12,6 +12,7 @@ from .views import (
     CategoryProductListView,
     DeliveryAddressValidationView,
     FeaturedProductListView,
+    CourierAssignedOrderListView,
     OrderListCreateView,
     OrderDetailView,
     PublicOrderAvailabilityView,
@@ -49,6 +50,11 @@ urlpatterns = [
         "orders/",
         OrderListCreateView.as_view(),
         name="order-list-create",
+    ),
+    path(
+        "orders/assigned/",
+        CourierAssignedOrderListView.as_view(),
+        name="order-assigned-list",
     ),
     path(
         "orders/delivery/validate/",

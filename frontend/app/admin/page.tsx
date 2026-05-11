@@ -17,6 +17,11 @@ const adminSections = [
     href: "/admin/pedidos",
   },
   {
+    title: "Repartidores",
+    description: "Gestionar usuarios repartidores y sus roles.",
+    href: "/admin/repartidores",
+  },
+  {
     title: "Ventas manuales",
     description: "Registrar ventas de mostrador con historial y filtros.",
     href: "/admin/ventas",
