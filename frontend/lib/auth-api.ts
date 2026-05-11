@@ -1,17 +1,27 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+  (globalThis as { process?: { env?: { NEXT_PUBLIC_API_URL?: string } } })
+    .process?.env?.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 export interface MeResponse {
   user_id: number;
   username: string;
   email: string;
   is_staff: boolean;
+  role: "customer" | "courier";
   full_name: string;
   phone: string;
   address: string;
   delivery_local_address?: string;
   delivery_city?: string;
   delivery_region?: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user_id: number;
+  username: string;
+  is_staff: boolean;
+  role: "customer" | "courier";
 }
 
 export interface OrderHistoryItem {
@@ -42,6 +52,9 @@ export interface OrderHistoryItem {
     | "service_error";
   address_validation_message?: string;
   delivery_maps_url?: string;
+  assigned_courier?: number | null;
+  assigned_courier_display_name?: string | null;
+  assigned_at?: string | null;
   notes: string | null;
   total_amount: string;
   created_at: string;
@@ -122,7 +135,7 @@ export async function register({
   delivery_local_address?: string;
   delivery_city?: string;
   delivery_region?: string;
-}) {
+}): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE_URL}/auth/registro/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -145,11 +158,11 @@ export async function register({
     throw data;
   }
 
-  return data;
+  return data as AuthResponse;
 }
 
 export const login = (payload: { username: string; password: string }) =>
-  request("/auth/login/", { method: "POST", body: JSON.stringify(payload) });
+  request("/auth/login/", { method: "POST", body: JSON.stringify(payload) }) as Promise<AuthResponse>;
 
 export async function logout(token: string) {
   return fetch(`${API_BASE_URL}/auth/logout/`, {
@@ -166,7 +179,7 @@ export async function me(token: string) {
     headers: {
       Authorization: `Token ${token}`,
     },
-  });
+  }) as Promise<MeResponse>;
 }
 
 export async function updateMe(

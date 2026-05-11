@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from .models import UserProfile
+from .utils import get_user_profile
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -57,6 +58,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         UserProfile.objects.create(
             user=user,
+            role=UserProfile.ROLE_CUSTOMER,
             full_name=full_name,
             phone=phone,
             address=address,
@@ -69,6 +71,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 class UserMeSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source="id", read_only=True)
+    role = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     phone = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
@@ -83,6 +86,7 @@ class UserMeSerializer(serializers.ModelSerializer):
             "username",
             "email",
             "is_staff",
+            "role",
             "full_name",
             "phone",
             "address",
@@ -92,8 +96,12 @@ class UserMeSerializer(serializers.ModelSerializer):
         )
 
     def get_full_name(self, obj):
-        profile = getattr(obj, "profile", None)
+        profile = get_user_profile(obj)
         return profile.full_name if profile else ""
+
+    def get_role(self, obj):
+        profile = get_user_profile(obj)
+        return profile.role if profile else UserProfile.ROLE_CUSTOMER
 
     def get_phone(self, obj):
         profile = getattr(obj, "profile", None)
@@ -104,16 +112,35 @@ class UserMeSerializer(serializers.ModelSerializer):
         return profile.address if profile else ""
 
     def get_delivery_local_address(self, obj):
-        profile = getattr(obj, "profile", None)
+        profile = get_user_profile(obj)
         return profile.delivery_local_address if profile else ""
 
     def get_delivery_city(self, obj):
-        profile = getattr(obj, "profile", None)
+        profile = get_user_profile(obj)
         return profile.delivery_city if profile else ""
 
     def get_delivery_region(self, obj):
-        profile = getattr(obj, "profile", None)
+        profile = get_user_profile(obj)
         return profile.delivery_region if profile else ""
+
+
+class CourierSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ("id", "username", "full_name", "role")
+
+    def get_full_name(self, obj):
+        profile = get_user_profile(obj)
+        if profile and profile.full_name:
+            return profile.full_name
+        return obj.username
+
+    def get_role(self, obj):
+        profile = get_user_profile(obj)
+        return profile.role if profile else UserProfile.ROLE_CUSTOMER
 
 
 class UserAccountUpdateSerializer(serializers.Serializer):
