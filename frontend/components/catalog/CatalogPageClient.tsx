@@ -1,14 +1,16 @@
 "use client";
 
 import CartConfirmModal from "@/components/cart/CartConfirmModal";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import useAuth from "@/context/AuthContext";
 import * as cartApi from "@/lib/cart-api";
 
 import CategoryCard from "@/components/catalog/CategoryCard";
 import ProductGrid from "@/components/catalog/ProductGrid";
 import SectionTitle from "@/components/catalog/SectionTitle";
+import TrustSection from "@/components/TrustSection";
+import Footer from "@/components/Footer";
 import {
   getCategories,
   getFeaturedProducts,
@@ -18,6 +20,13 @@ import {
 import type { CatalogProduct, Category, Product } from "@/types/catalog";
 
 const toNumberPrice = (value: string) => Number(value);
+
+const normalizeSearchText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 
 const extractVariantLabel = (name: string) => {
   const sizeMatch = name.match(/\b(pequeñ[ao]|median[ao]|grande)\b/i);
@@ -72,6 +81,7 @@ const groupProductsWithVariants = (products: Product[]): CatalogProduct[] => {
       price: product.price,
       image: product.image,
       label: variantLabel,
+      description: product.description,
     };
 
     const existing = grouped.get(mapKey);
@@ -99,19 +109,23 @@ const groupProductsWithVariants = (products: Product[]): CatalogProduct[] => {
 };
 
 export default function CatalogPageClient() {
+  const searchParams = useSearchParams();
+  const initialSearch = useMemo(() => (searchParams.get("search") ?? "").trim(), [searchParams]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<CatalogProduct[]>([]);
   const [allProducts, setAllProducts] = useState<CatalogProduct[]>([]);
   const [categoryProducts, setCategoryProducts] = useState<CatalogProduct[]>([]);
   const [selectedCategorySlug, setSelectedCategorySlug] = useState<string | null>(null);
   const [ordering, setOrdering] = useState<"name" | "-name" | "price" | "-price">("name");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [page, setPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingCategoryProducts, setLoadingCategoryProducts] = useState(false);
   const [confirmProduct, setConfirmProduct] = useState<string | null>(null);
+  const categoryResultRef = useRef<HTMLParagraphElement | null>(null);
+  const allProductsSectionRef = useRef<HTMLElement | null>(null);
 
   const selectedCategory = useMemo(
     () => categories.find((category) => category.slug === selectedCategorySlug),
@@ -156,6 +170,27 @@ const loadInitialData = useCallback(async () => {
         ordering,
         search,
       });
+
+      const normalizedSearch = normalizeSearchText(search);
+      if (normalizedSearch && data.count === 0) {
+        const fallbackData = await getProducts({
+          page: 1,
+          page_size: 100,
+          ordering,
+        });
+
+        const filteredProducts = fallbackData.results.filter((product) => {
+          const name = normalizeSearchText(product.name);
+          const description = normalizeSearchText(product.description || "");
+          return name.includes(normalizedSearch) || description.includes(normalizedSearch);
+        });
+
+        setAllProducts(groupProductsWithVariants(filteredProducts));
+        setTotalProducts(filteredProducts.length);
+        setError(null);
+        return;
+      }
+
       setAllProducts(groupProductsWithVariants(data.results));
       setTotalProducts(data.count);
       setError(null);
@@ -183,11 +218,16 @@ const loadInitialData = useCallback(async () => {
   }, [loadInitialData]);
 
   useEffect(() => {
+    setSearch((currentSearch) => (currentSearch === initialSearch ? currentSearch : initialSearch));
+    setPage((currentPage) => (currentPage === 1 ? currentPage : 1));
+  }, [initialSearch]);
+
+  useEffect(() => {
     void loadAllProducts();
   }, [page, ordering, search]);
 
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
 const handleAddToCart = async (productId: number, productName: string) => {
   if (!token) { router.push("/login"); return; }
@@ -200,12 +240,21 @@ const handleAddToCart = async (productId: number, productName: string) => {
   }
 };
 
+  const handleCategorySelect = (slug: string) => {
+    void loadProductsByCategory(slug);
+    categoryResultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleShowAllProducts = () => {
+    allProductsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const hasNextPage = page * 20 < totalProducts;
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
-        <div className="mx-auto max-w-6xl rounded-2xl bg-white p-6 text-center text-[var(--cce-text-muted)] shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
+      <main className="min-h-screen bg-[var(--background)] px-4 py-10 md:px-10">
+        <div className="mx-auto max-w-6xl rounded-2xl bg-[var(--card)] p-6 text-center text-[var(--muted-foreground)] shadow-md">
           Cargando catálogo...
         </div>
       </main>
@@ -214,14 +263,14 @@ const handleAddToCart = async (productId: number, productName: string) => {
 
   if (error && !categories.length && !featuredProducts.length && !allProducts.length) {
     return (
-      <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
-        <div className="mx-auto max-w-6xl rounded-2xl bg-white p-6 text-center text-red-700 shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
+      <main className="min-h-screen bg-[var(--background)] px-4 py-10 md:px-10">
+        <div className="mx-auto max-w-6xl rounded-2xl bg-[var(--card)] p-6 text-center text-red-700 shadow-md">
           {error}
           <div className="mt-4">
             <button
               type="button"
               onClick={() => void loadInitialData()}
-              className="rounded-full bg-[var(--cce-mustard)] px-4 py-2 font-semibold text-[var(--cce-green-dark)]"
+              className="rounded-full bg-[var(--secondary)] px-4 py-2 font-semibold text-[var(--secondary-foreground)]"
             >
               Reintentar
             </button>
@@ -232,21 +281,38 @@ const handleAddToCart = async (productId: number, productName: string) => {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--cce-beige)] pb-14">
+    <main className="min-h-screen bg-[var(--background)] pb-14">
       <section className="relative h-[340px] overflow-hidden">
         <img
-          src="/Local_sede.jpeg"
+          src="/hero-portada.jpg"
           alt="Empanadas tradicionales"
           className="h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-black/55" />
-        <div className="absolute inset-0 mx-auto flex max-w-6xl flex-col justify-center px-4 text-white md:px-8">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/35 to-transparent" />
+        <div className="absolute inset-0 mx-auto flex max-w-6xl flex-col justify-end px-4 pb-8 text-white md:px-8">
           <p className="text-2xl font-bold md:text-4xl">Tradición que encanta desde 1972</p>
-          <p className="mt-2 text-sm md:text-xl">El auténtico sabor caucano en cada bocado</p>
+          <p className="mt-1 text-sm text-[var(--secondary)] md:text-lg">El auténtico sabor caucano en cada bocado</p>
         </div>
       </section>
 
       <div className="mx-auto mt-8 flex w-full max-w-6xl flex-col gap-12 px-4 md:px-8">
+        <section className="rounded-2xl border border-[color-mix(in_srgb,var(--primary)_15%,white)] bg-white p-4 shadow-[0_8px_24px_rgba(31,92,58,0.06)]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-[var(--foreground)]">
+              Modo actual: {user?.is_staff ? "Administrador" : token ? "Usuario" : "Invitado"}
+            </p>
+            {user?.is_staff ? (
+              <span className="rounded-full bg-[color-mix(in_srgb,var(--secondary)_40%,white)] px-3 py-1 text-xs font-semibold text-[var(--primary)]">
+                Acceso admin activo
+              </span>
+            ) : (
+              <span className="rounded-full bg-[color-mix(in_srgb,var(--muted)_65%,white)] px-3 py-1 text-xs font-semibold text-[var(--muted-foreground)]">
+                Acceso de cliente
+              </span>
+            )}
+          </div>
+        </section>
+
         <section>
           <SectionTitle title="Productos Destacados" />
           <ProductGrid
@@ -261,22 +327,42 @@ const handleAddToCart = async (productId: number, productName: string) => {
             title="Productos por Categorías"
             subtitle="Selecciona una categoría para ver sus productos sin recargar la página."
           />
-          <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="mb-7 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {categories.map((category) => (
               <CategoryCard
                 key={category.id}
                 category={category}
                 selected={selectedCategorySlug === category.slug}
-                onSelect={(slug) => void loadProductsByCategory(slug)}
+                onSelect={handleCategorySelect}
               />
             ))}
           </div>
 
-          <p className="mb-4 text-sm font-semibold text-[var(--cce-green-dark)]">
-            {selectedCategory ? `Mostrando: ${selectedCategory.name}` : "Selecciona una categoría"}
-          </p>
+          <div className="mb-6 border-t border-[color-mix(in_srgb,var(--primary)_15%,white)] pt-8">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 ref={categoryResultRef} className="scroll-mt-24 text-4xl font-bold text-[var(--primary)]">
+                  {selectedCategory ? selectedCategory.name : "Productos"}
+                </h3>
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                  {selectedCategory
+                    ? `Mostrando productos de la categoría ${selectedCategory.name}.`
+                    : "Selecciona una categoría para ver sus productos."}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleShowAllProducts}
+                className="rounded-lg bg-[var(--accent)] px-5 py-2.5 text-lg font-semibold text-[var(--accent-foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_88%,black)]"
+              >
+                Ver todos
+              </button>
+            </div>
+          </div>
+
           {loadingCategoryProducts ? (
-            <div className="rounded-2xl bg-white p-6 text-center text-[var(--cce-text-muted)] shadow-[0_8px_30px_rgba(31,77,58,0.09)]">
+            <div className="rounded-2xl bg-[var(--card)] p-6 text-center text-[var(--muted-foreground)] shadow-md">
               Cargando productos de la categoría...
             </div>
           ) : (
@@ -288,8 +374,11 @@ const handleAddToCart = async (productId: number, productName: string) => {
           )}
         </section>
 
-        <section>
-          <SectionTitle title="Todos los Productos" />
+        <section id="todos-productos" ref={allProductsSectionRef}>
+          <SectionTitle
+            title={search ? `Resultados para "${search}"` : "Todos los Productos"}
+            subtitle={search ? "Estos son los productos que coinciden con tu búsqueda." : undefined}
+          />
           <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <input
               value={search}
@@ -298,7 +387,7 @@ const handleAddToCart = async (productId: number, productName: string) => {
                 setSearch(event.target.value);
               }}
               placeholder="Buscar por nombre o descripción"
-              className="w-full rounded-full border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] bg-white px-4 py-2 text-sm outline-none focus:border-[var(--cce-green-dark)] md:max-w-sm"
+              className="w-full rounded-full border border-[color-mix(in_srgb,var(--primary)_20%,white)] bg-white px-4 py-2 text-sm outline-none focus:border-[var(--primary)] md:max-w-sm"
             />
             <select
               value={ordering}
@@ -306,7 +395,7 @@ const handleAddToCart = async (productId: number, productName: string) => {
                 setPage(1);
                 setOrdering(event.target.value as "name" | "-name" | "price" | "-price");
               }}
-              className="rounded-full border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] bg-white px-4 py-2 text-sm outline-none focus:border-[var(--cce-green-dark)]"
+              className="rounded-full border border-[color-mix(in_srgb,var(--primary)_20%,white)] bg-white px-4 py-2 text-sm outline-none focus:border-[var(--primary)]"
             >
               <option value="name">Nombre (A-Z)</option>
               <option value="-name">Nombre (Z-A)</option>
@@ -326,22 +415,28 @@ const handleAddToCart = async (productId: number, productName: string) => {
               type="button"
               onClick={() => setPage((currentPage) => Math.max(currentPage - 1, 1))}
               disabled={page === 1}
-              className="rounded-full bg-[var(--cce-green-dark)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-full bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               Anterior
             </button>
-            <span className="text-sm font-semibold text-[var(--cce-green-dark)]">Página {page}</span>
+            <span className="text-sm font-semibold text-[var(--primary)]">Página {page}</span>
             <button
               type="button"
               onClick={() => setPage((currentPage) => currentPage + 1)}
               disabled={!hasNextPage}
-              className="rounded-full bg-[var(--cce-green-dark)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-full bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               Siguiente
             </button>
           </div>
         </section>
       </div>
+
+      <div className="mt-12">
+        <TrustSection />
+      </div>
+      <Footer />
+
       {confirmProduct && (
         <CartConfirmModal
           productName={confirmProduct}

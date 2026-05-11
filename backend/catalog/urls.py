@@ -3,12 +3,18 @@ from django.urls import path
 from .views import (
     ActiveCategoryListView,
     ActiveProductListView,
+    AdminDeliveryCoverageSettingsView,
+    AdminOrderAvailabilityConfigView,
     AdminProductDetailView,
     AdminProductListCreateView,
+    AdminRestrictedDateDetailView,
+    AdminRestrictedDateListCreateView,
     CategoryProductListView,
+    DeliveryAddressValidationView,
     FeaturedProductListView,
     OrderListCreateView,
     OrderDetailView,
+    PublicOrderAvailabilityView,
 )
 
 urlpatterns = [
@@ -45,8 +51,38 @@ urlpatterns = [
         name="order-list-create",
     ),
     path(
+        "orders/delivery/validate/",
+        DeliveryAddressValidationView.as_view(),
+        name="order-delivery-validate",
+    ),
+    path(
         "orders/<int:pk>/",
         OrderDetailView.as_view(),
         name="order-detail",
+    ),
+    path(
+        "order-availability/",
+        PublicOrderAvailabilityView.as_view(),
+        name="public-order-availability",
+    ),
+    path(
+        "admin/order-availability/",
+        AdminOrderAvailabilityConfigView.as_view(),
+        name="admin-order-availability",
+    ),
+    path(
+        "admin/restricted-dates/",
+        AdminRestrictedDateListCreateView.as_view(),
+        name="admin-restricted-date-list-create",
+    ),
+    path(
+        "admin/restricted-dates/<int:pk>/",
+        AdminRestrictedDateDetailView.as_view(),
+        name="admin-restricted-date-detail",
+    ),
+    path(
+        "admin/delivery-coverage/",
+        AdminDeliveryCoverageSettingsView.as_view(),
+        name="admin-delivery-coverage",
     ),
 ]

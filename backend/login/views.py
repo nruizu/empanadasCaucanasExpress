@@ -5,12 +5,19 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
-from .serializers import UserRegistrationSerializer
+from .serializers import (
+    UserAccountUpdateSerializer,
+    UserMeSerializer,
+    UserRegistrationSerializer,
+)
 
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def login_view(request):
+    # gets the data from the JSON transformed in a python dictionary
+    # then the user is authenticated and a JSON response is returned
+    # with the token and user info
     username = request.data.get("username")
     password = request.data.get("password")
     if username is None or password is None:
@@ -38,6 +45,8 @@ def login_view(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def register_view(request):
+    # the data from the JSON is transformed in a python dictionary and validated
+    # if the data is valid, a new user is created and a JSON response is returned
     serializer = UserRegistrationSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
@@ -62,15 +71,21 @@ def logout_view(request):
     return Response({"message": "Logged out successfully"}, status=status.HTTP_200_OK)
 
 
-@api_view(["GET"])
+@api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
 def me_view(request):
     user = request.user
-    return Response(
-        {
-            "user_id": user.id,
-            "username": user.username,
-            "is_staff": user.is_staff,
-        },
-        status=status.HTTP_200_OK,
-    )
+
+    if request.method == "PATCH":
+        serializer = UserAccountUpdateSerializer(
+            instance=user,
+            data=request.data,
+            partial=True,
+        )
+        if serializer.is_valid():
+            serializer.save()
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    data = UserMeSerializer(user).data
+    return Response(data, status=status.HTTP_200_OK)

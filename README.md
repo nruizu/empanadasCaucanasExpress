@@ -1,31 +1,36 @@
 # Para correr el proyecto
 
 **Para levantar los contenedores:**
-```javascript  
+
+```javascript
   docker compose up --build
 ```
 
 **Para ver estado de los contenedores:**
-```javascript  
+
+```javascript
   docker compose ps
 ```
 
-**Nota:** Hasta el momento debería mostrar dos: *postgresql* y *backend* (django).
+**Nota:** Hasta el momento debería mostrar dos: _postgresql_ y _backend_ (django).
 
 **Para verificar que PostgreSQL esté listo**
-```javascript  
+
+```javascript
   docker compose exec postgres pg_isready -U "$DB_USER" -d "$DB_NAME"
 ```
 
 **Nota:** Debe responder `accepting connections`
 
 **Para ver logs y salud de los contenedores:**
-```javascript  
+
+```javascript
   docker compose logs -f backend
   docker compose logs -f postgres
 ```
 
 **Detener contenedores:**
-```javascript  
+
+```javascript
   docker compose down
 ```

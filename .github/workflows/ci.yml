@@ -4,9 +4,9 @@ name: Django CI
 
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   push:
-    branches: [ main, develop, "feature/*" ]
+    branches: [main, develop, "feature/*"]
 
 jobs:
   build:
@@ -65,10 +65,11 @@ jobs:
 
       - name: Lint
         run: flake8 .
-      
+
       - name: Check format
         run: |
           black --check --diff .
+
       - name: Run Bandit
         run: |
           bandit -c bandit.yaml -r .

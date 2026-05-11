@@ -3,6 +3,8 @@ from rest_framework.test import APIClient, APITestCase
 from rest_framework.authtoken.models import Token
 from rest_framework import status
 
+from backend.login.models import UserProfile
+
 
 class LoginViewTest(APITestCase):
 
@@ -113,6 +115,10 @@ class LoginViewTest(APITestCase):
         self.assertEqual(response.data["username"], "testuser")
         self.assertEqual(response.data["user_id"], self.user.id)
         self.assertFalse(response.data["is_staff"])
+        self.assertIn("email", response.data)
+        self.assertIn("full_name", response.data)
+        self.assertIn("phone", response.data)
+        self.assertIn("address", response.data)
 
     def test_me_each_user_sees_only_own_data(self):
         user2 = User.objects.create_user(
@@ -134,6 +140,26 @@ class LoginViewTest(APITestCase):
         response = self.client.get("/api/auth/me/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_me_patch_updates_account_data(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
+        payload = {
+            "email": "updated@example.com",
+            "full_name": "Usuario Actualizado",
+            "phone": "3009990000",
+            "address": "Calle Actualizada # 1-2",
+        }
+
+        response = self.client.patch("/api/auth/me/", payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "updated@example.com")
+
+        profile = UserProfile.objects.get(user=self.user)
+        self.assertEqual(profile.full_name, "Usuario Actualizado")
+        self.assertEqual(profile.phone, "3009990000")
+        self.assertEqual(profile.address, "Calle Actualizada # 1-2")
+
     # setUp helper para tests de logout y me
     @property
     def token(self):
@@ -151,6 +177,9 @@ class RegisterViewTest(APITestCase):
             "username": "newuser",
             "email": "newuser@example.com",
             "password": "newpass123",
+            "full_name": "Nuevo Usuario",
+            "phone": "3001234567",
+            "address": "Calle 10 # 20-30",
         }
         response = self.client.post("/api/auth/registro/", data)
 
@@ -166,29 +195,85 @@ class RegisterViewTest(APITestCase):
             "username": "newuser",
             "email": "newuser@example.com",
             "password": "newpass123",
+            "full_name": "Nuevo Usuario",
+            "phone": "3001234567",
+            "address": "Calle 10 # 20-30",
         }
         self.client.post("/api/auth/registro/", data)
 
         user = User.objects.get(username="newuser")
         self.assertEqual(user.email, "newuser@example.com")
 
-    def test_register_without_email_is_allowed(self):
-        data = {"username": "newuser", "password": "newpass123"}
+    def test_register_without_email_returns_400(self):
+        data = {
+            "username": "newuser",
+            "password": "newpass123",
+            "full_name": "Nuevo Usuario",
+            "phone": "3001234567",
+            "address": "Calle 10 # 20-30",
+        }
         response = self.client.post("/api/auth/registro/", data)
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        user = User.objects.get(username="newuser")
-        self.assertEqual(user.email, "")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
 
     def test_register_missing_username_returns_400(self):
-        data = {"email": "test@example.com", "password": "testpass123"}
+        data = {
+            "email": "test@example.com",
+            "password": "testpass123",
+            "full_name": "Nuevo Usuario",
+            "phone": "3001234567",
+            "address": "Calle 10 # 20-30",
+        }
         response = self.client.post("/api/auth/registro/", data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_register_missing_password_returns_400(self):
-        data = {"username": "newuser", "email": "test@example.com"}
+        data = {
+            "username": "newuser",
+            "email": "test@example.com",
+            "full_name": "Nuevo Usuario",
+            "phone": "3001234567",
+            "address": "Calle 10 # 20-30",
+        }
         response = self.client.post("/api/auth/registro/", data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_register_missing_full_name_returns_400(self):
+        data = {
+            "username": "newuser",
+            "email": "test@example.com",
+            "password": "newpass123",
+            "phone": "3001234567",
+            "address": "Calle 10 # 20-30",
+        }
+        response = self.client.post("/api/auth/registro/", data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("full_name", response.data)
+
+    def test_register_missing_phone_returns_400(self):
+        data = {
+            "username": "newuser",
+            "email": "test@example.com",
+            "password": "newpass123",
+            "full_name": "Nuevo Usuario",
+            "address": "Calle 10 # 20-30",
+        }
+        response = self.client.post("/api/auth/registro/", data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("phone", response.data)
+
+    def test_register_missing_address_returns_400(self):
+        data = {
+            "username": "newuser",
+            "email": "test@example.com",
+            "password": "newpass123",
+            "full_name": "Nuevo Usuario",
+            "phone": "3001234567",
+        }
+        response = self.client.post("/api/auth/registro/", data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("address", response.data)
 
     # CA-REG-02: No se permiten usernames duplicados
     def test_register_duplicate_username_returns_400(self):
@@ -199,6 +284,9 @@ class RegisterViewTest(APITestCase):
             "username": "existinguser",
             "email": "otro@example.com",
             "password": "newpass123",
+            "full_name": "Otro Usuario",
+            "phone": "3007654321",
+            "address": "Cra 1 # 2-3",
         }
         response = self.client.post("/api/auth/registro/", data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -211,13 +299,23 @@ class RegisterViewTest(APITestCase):
             "username": "user2",
             "email": "duplicate@example.com",
             "password": "newpass123",
+            "full_name": "Usuario Dos",
+            "phone": "3007654321",
+            "address": "Cra 1 # 2-3",
         }
         response = self.client.post("/api/auth/registro/", data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     # CA-REG-03: La contraseña debe cumplir requisitos mínimos de seguridad
     def test_register_password_too_short_returns_400(self):
-        data = {"username": "newuser", "email": "test@example.com", "password": "short"}
+        data = {
+            "username": "newuser",
+            "email": "test@example.com",
+            "password": "short",
+            "full_name": "Nuevo Usuario",
+            "phone": "3001234567",
+            "address": "Calle 10 # 20-30",
+        }
         response = self.client.post("/api/auth/registro/", data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -229,9 +327,30 @@ class RegisterViewTest(APITestCase):
             "username": "newuser",
             "email": "newuser@example.com",
             "password": "newpass123",
+            "full_name": "Nuevo Usuario",
+            "phone": "3001234567",
+            "address": "Calle 10 # 20-30",
         }
         response = self.client.post("/api/auth/registro/", data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         token = Token.objects.get(key=response.data["token"])
         self.assertEqual(token.user.username, "newuser")
+
+    def test_register_creates_user_profile(self):
+        data = {
+            "username": "newuser",
+            "email": "newuser@example.com",
+            "password": "newpass123",
+            "full_name": "Nuevo Usuario",
+            "phone": "3001234567",
+            "address": "Calle 10 # 20-30",
+        }
+        response = self.client.post("/api/auth/registro/", data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        user = User.objects.get(username="newuser")
+        profile = UserProfile.objects.get(user=user)
+        self.assertEqual(profile.full_name, "Nuevo Usuario")
+        self.assertEqual(profile.phone, "3001234567")
+        self.assertEqual(profile.address, "Calle 10 # 20-30")

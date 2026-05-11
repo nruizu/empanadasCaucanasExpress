@@ -8,9 +8,15 @@ interface Props {
   onGoToCart: () => void;
 }
 
-export default function CartConfirmModal({ productName, onClose, onGoToCart }: Props) {
+export default function CartConfirmModal({
+  productName,
+  onClose,
+  onGoToCart,
+}: Props) {
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
@@ -26,14 +32,29 @@ export default function CartConfirmModal({ productName, onClose, onGoToCart }: P
           className="bg-white rounded-2xl shadow-xl p-6 w-80 flex flex-col items-center gap-4 z-51"
         >
           <div className="h-14 w-14 rounded-full bg-green-100 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-8 w-8 text-green-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
 
           <div className="text-center">
-            <p className="font-semibold text-gray-800 text-base">¡Agregado al carrito!</p>
-            <p className="text-sm text-gray-500 mt-1 line-clamp-1">{productName}</p>
+            <p className="font-semibold text-gray-800 text-base">
+              ¡Agregado al carrito!
+            </p>
+            <p className="text-sm text-gray-500 mt-1 line-clamp-1">
+              {productName}
+            </p>
           </div>
 
           <div className="flex gap-3 w-full">

@@ -5,10 +5,14 @@ import type {
   ProductFilters,
 } from "@/types/catalog";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 class ApiError extends Error {
-  constructor(message: string, public status: number) {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
     super(message);
     this.name = "ApiError";
   }
@@ -67,11 +71,14 @@ const toArrayResponse = <T>(payload: T[] | PaginatedResponse<T>): T[] => {
 };
 
 export const getCategories = async () => {
-  const response = await request<Category[] | PaginatedResponse<Category>>("/categories/");
+  const response = await request<Category[] | PaginatedResponse<Category>>(
+    "/categories/",
+  );
   return toArrayResponse(response);
 };
 
-export const getFeaturedProducts = () => request<Product[]>("/products/featured/");
+export const getFeaturedProducts = () =>
+  request<Product[]>("/products/featured/");
 
 export const getProducts = (filters?: ProductFilters) =>
   request<PaginatedResponse<Product>>("/products/", toQueryParams(filters));
@@ -81,5 +88,31 @@ export const getProductsByCategory = (slug: string, filters?: ProductFilters) =>
     `/categories/${slug}/products/`,
     toQueryParams(filters),
   );
+
+export interface PublicRestrictedDate {
+  id: number;
+  date: string;
+  applies_to: "all" | "pickup" | "delivery" | "scheduled";
+  reason: string;
+  is_active: boolean;
+}
+
+export interface PublicOrderAvailability {
+  pickup_weekday_open: string;
+  pickup_weekday_close: string;
+  pickup_sunday_open: string;
+  pickup_sunday_close: string;
+  delivery_weekday_open: string;
+  delivery_weekday_close: string;
+  delivery_sunday_open: string;
+  delivery_sunday_close: string;
+  is_accepting_orders: boolean;
+  order_notice: string;
+  restricted_dates: PublicRestrictedDate[];
+  updated_at: string;
+}
+
+export const getOrderAvailability = () =>
+  request<PublicOrderAvailability>("/order-availability/");
 
 export { ApiError };
