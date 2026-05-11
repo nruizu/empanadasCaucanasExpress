@@ -133,11 +133,15 @@ class OrderListCreateView(generics.ListCreateAPIView):
         return [AllowAny()]
 
     def get_queryset(self):
-        queryset = Order.objects.select_related(
-            "assigned_courier",
-            "assigned_courier__profile",
-            "created_by",
-        ).prefetch_related("items__product").all()
+        queryset = (
+            Order.objects.select_related(
+                "assigned_courier",
+                "assigned_courier__profile",
+                "created_by",
+            )
+            .prefetch_related("items__product")
+            .all()
+        )
 
         # Filtros opcionales
         status = self.request.query_params.get("status")
@@ -160,11 +164,15 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     serializer_class = OrderSerializer
     permission_classes = (IsAdminUser,)
-    queryset = Order.objects.select_related(
-        "assigned_courier",
-        "assigned_courier__profile",
-        "created_by",
-    ).prefetch_related("items__product").all()
+    queryset = (
+        Order.objects.select_related(
+            "assigned_courier",
+            "assigned_courier__profile",
+            "created_by",
+        )
+        .prefetch_related("items__product")
+        .all()
+    )
 
 
 class CourierAssignedOrderListView(generics.ListAPIView):

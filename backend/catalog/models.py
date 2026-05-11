@@ -290,10 +290,6 @@ class Order(models.Model):
         return "45-60 minutos"
 
     def clean(self):
-        """
-        Validaciones básicas (teléfono, courier)
-        No validar horarios ni disponibilidad - eso es responsabilidad del serializer en create
-        """
         super().clean()
 
         phone = (self.customer_phone or "").strip()

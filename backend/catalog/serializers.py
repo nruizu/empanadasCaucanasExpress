@@ -261,7 +261,10 @@ class OrderSerializer(serializers.ModelSerializer):
             next_assigned_courier = validated_data["assigned_courier"]
             if next_assigned_courier is None:
                 instance.assigned_at = None
-            elif next_assigned_courier != instance.assigned_courier or not instance.assigned_at:
+            elif (
+                next_assigned_courier != instance.assigned_courier
+                or not instance.assigned_at
+            ):
                 instance.assigned_at = timezone.now()
 
         effective_delivery_method = validated_data.get(

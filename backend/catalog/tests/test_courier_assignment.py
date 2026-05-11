@@ -74,7 +74,9 @@ class CourierAssignmentTests(APITestCase):
     def test_admin_can_assign_order_to_courier(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.admin_token.key}")
         payload = {"assigned_courier": self.courier.id}
-        response = self.client.patch(f"/api/orders/{self.order.id}/", payload, format="json")
+        response = self.client.patch(
+            f"/api/orders/{self.order.id}/", payload, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.order.refresh_from_db()
@@ -85,7 +87,9 @@ class CourierAssignmentTests(APITestCase):
         # customer tries to assign -> should be forbidden by view permissions
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.customer_token.key}")
         payload = {"assigned_courier": self.courier.id}
-        response = self.client.patch(f"/api/orders/{self.order.id}/", payload, format="json")
+        response = self.client.patch(
+            f"/api/orders/{self.order.id}/", payload, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
@@ -142,7 +146,11 @@ class CourierAssignedListTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.courier_token.key}")
         response = self.client.get("/api/orders/assigned/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        results = response.data.get("results") if isinstance(response.data, dict) else response.data
+        results = (
+            response.data.get("results")
+            if isinstance(response.data, dict)
+            else response.data
+        )
         ids = [item["id"] for item in results]
         self.assertIn(self.order_a.id, ids)
         self.assertNotIn(self.order_b.id, ids)
@@ -153,7 +161,11 @@ class CourierAssignedListTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {token_b.key}")
         response = self.client.get("/api/orders/assigned/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        results = response.data.get("results") if isinstance(response.data, dict) else response.data
+        results = (
+            response.data.get("results")
+            if isinstance(response.data, dict)
+            else response.data
+        )
         ids = [item["id"] for item in results]
         self.assertIn(self.order_b.id, ids)
         self.assertNotIn(self.order_a.id, ids)

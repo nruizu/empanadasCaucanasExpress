@@ -102,7 +102,9 @@ def admin_couriers_view(request):
         .filter(profile__role=UserProfile.ROLE_COURIER)
         .order_by("profile__full_name", "username")
     )
-    return Response(CourierSerializer(couriers, many=True).data, status=status.HTTP_200_OK)
+    return Response(
+        CourierSerializer(couriers, many=True).data, status=status.HTTP_200_OK
+    )
 
 
 @api_view(["GET", "PATCH"])
@@ -124,9 +126,15 @@ def admin_users_view(request, user_id=None):
                     "id": user.id,
                     "username": user.username,
                     "email": user.email,
-                    "full_name": user.profile.full_name if hasattr(user, "profile") else "",
+                    "full_name": (
+                        user.profile.full_name if hasattr(user, "profile") else ""
+                    ),
                     "phone": user.profile.phone if hasattr(user, "profile") else "",
-                    "role": user.profile.role if hasattr(user, "profile") else UserProfile.ROLE_CUSTOMER,
+                    "role": (
+                        user.profile.role
+                        if hasattr(user, "profile")
+                        else UserProfile.ROLE_CUSTOMER
+                    ),
                 }
                 for user in users
             ],

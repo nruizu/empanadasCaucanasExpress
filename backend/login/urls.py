@@ -1,6 +1,13 @@
 from django.urls import path
 
-from .views import admin_couriers_view, admin_users_view, login_view, logout_view, me_view, register_view
+from .views import (
+    admin_couriers_view,
+    admin_users_view,
+    login_view,
+    logout_view,
+    me_view,
+    register_view,
+)
 
 urlpatterns = [
     path("login/", login_view, name="api_login"),
