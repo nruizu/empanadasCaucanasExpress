@@ -164,3 +164,34 @@ export async function deleteAdminOrder(orderId: number) {
     throw new AdminOrdersApiError(message, response.status);
   }
 }
+
+export async function approveAdminOrderPayment(orderId: number) {
+  return updateAdminOrderPayment(orderId, "approve");
+}
+
+export async function rejectAdminOrderPayment(orderId: number) {
+  return updateAdminOrderPayment(orderId, "reject");
+}
+
+async function updateAdminOrderPayment(orderId: number, action: "approve" | "reject") {
+  const token = getToken();
+
+  const response = await fetch(
+    `${API_BASE_URL}/orders/${orderId}/payment/${action}/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Token ${token}` } : {}),
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const message = body.detail || body.error || "No se pudo actualizar el pago";
+    throw new AdminOrdersApiError(message, response.status);
+  }
+
+  return (await response.json()) as OrderHistoryItem;
+}

@@ -259,6 +259,46 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> Decimal:
     return Decimal(str(earth_radius_km * c)).quantize(Decimal("0.001"))
 
 
+def osrm_route_km(
+    origin_lat: Decimal,
+    origin_lon: Decimal,
+    dest_lat: Decimal,
+    dest_lon: Decimal,
+) -> Decimal | None:
+    base_url = getattr(
+        settings,
+        "OSRM_ROUTE_URL",
+        "https://router.project-osrm.org/route/v1/driving",
+    )
+    timeout_seconds = int(getattr(settings, "OSRM_TIMEOUT_SECONDS", 6))
+    url = (
+        f"{base_url}/{origin_lon},{origin_lat};{dest_lon},{dest_lat}"
+        "?overview=false&alternatives=false&steps=false"
+    )
+
+    parsed_url = urlsplit(url)
+    if parsed_url.scheme not in {"http", "https"}:
+        raise DeliveryValidationError("El servicio de rutas tiene un esquema invalido")
+
+    try:
+        response = requests.get(url, timeout=timeout_seconds)
+        response.raise_for_status()
+        payload = response.json()
+    except requests.exceptions.RequestException:
+        return None
+
+    routes = payload.get("routes") or []
+    if not routes:
+        return None
+
+    distance_m = routes[0].get("distance")
+    if distance_m is None:
+        return None
+
+    distance_km = Decimal(str(distance_m / 1000)).quantize(Decimal("0.001"))
+    return distance_km
+
+
 def _geocode_with_nominatim(address_query: str) -> tuple[Decimal, Decimal]:
     base_url = getattr(
         settings,
@@ -483,12 +523,14 @@ def validate_delivery_address(address: str) -> DeliveryValidationResult:
         origin_lat, origin_lon = get_coverage_origin_coordinates(settings_obj)
         lat, lon = geocode_address(clean_address)
 
-        distance_km = haversine_km(
-            float(origin_lat),
-            float(origin_lon),
-            float(lat),
-            float(lon),
-        )
+        distance_km = osrm_route_km(origin_lat, origin_lon, lat, lon)
+        if distance_km is None:
+            distance_km = haversine_km(
+                float(origin_lat),
+                float(origin_lon),
+                float(lat),
+                float(lon),
+            )
     except DeliveryValidationError as exc:
         error_str = str(exc)
         if "No se encontr" in error_str or "not-found" in error_str:

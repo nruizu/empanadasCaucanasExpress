@@ -192,3 +192,14 @@ NOMINATIM_USER_AGENT = env(
     "NOMINATIM_USER_AGENT",
     default="empanadas-caucanas-express/1.0 (delivery-validation)",
 )
+
+OSRM_ROUTE_URL = env(
+    "OSRM_ROUTE_URL",
+    default="https://router.project-osrm.org/route/v1/driving",
+)
+OSRM_TIMEOUT_SECONDS = env.int("OSRM_TIMEOUT_SECONDS", default=6)
+
+PAYMENT_RECEIPT_MAX_BYTES = env.int(
+    "PAYMENT_RECEIPT_MAX_BYTES",
+    default=5 * 1024 * 1024,
+)

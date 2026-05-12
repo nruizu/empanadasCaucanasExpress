@@ -111,6 +111,37 @@ class OrderAvailabilityConfig(models.Model):
         return config
 
 
+class ManualPaymentSettings(models.Model):
+    """Configuracion para pagos manuales (transferencias)."""
+
+    singleton_id = models.PositiveSmallIntegerField(
+        primary_key=True,
+        default=1,
+        editable=False,
+    )
+    is_active = models.BooleanField(default=True)
+    bank_name = models.CharField(max_length=120, blank=True)
+    account_number = models.CharField(max_length=60, blank=True)
+    account_type = models.CharField(max_length=60, blank=True)
+    account_holder = models.CharField(max_length=120, blank=True)
+    transfer_key = models.CharField(max_length=120, blank=True)
+    qr_image = models.ImageField(upload_to="payment_qr/", blank=True, null=True)
+    instructions = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuracion de pago manual"
+        verbose_name_plural = "Configuracion de pagos manuales"
+
+    def __str__(self):
+        return "Configuracion de pagos manuales"
+
+    @classmethod
+    def get_solo(cls):
+        config, _ = cls.objects.get_or_create(singleton_id=1)
+        return config
+
+
 class RestrictedDate(models.Model):
     APPLIES_TO_CHOICES = [
         ("all", "Todas las modalidades"),
@@ -163,10 +194,39 @@ class Order(models.Model):
         ("cancelled", "Cancelado"),
     ]
 
+    PAYMENT_METHOD_CHOICES = [
+        ("cash_on_delivery", "Pago contra entrega"),
+        ("transfer", "Transferencia"),
+    ]
+
+    PAYMENT_STATUS_CHOICES = [
+        ("pending_payment", "Pendiente de pago"),
+        ("cash_on_delivery", "Pago contra entrega"),
+        ("pending_validation", "Pendiente de validacion"),
+        ("approved", "Pago aprobado"),
+        ("rejected", "Pago rechazado"),
+    ]
+
     # Información básica
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    payment_method = models.CharField(
+        max_length=30,
+        choices=PAYMENT_METHOD_CHOICES,
+        default="cash_on_delivery",
+    )
+    payment_status = models.CharField(
+        max_length=30,
+        choices=PAYMENT_STATUS_CHOICES,
+        default="cash_on_delivery",
+    )
+    payment_receipt = models.FileField(
+        upload_to="payment_receipts/",
+        blank=True,
+        null=True,
+    )
+    payment_receipt_uploaded_at = models.DateTimeField(blank=True, null=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         blank=True,

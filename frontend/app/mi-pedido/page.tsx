@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import * as authApi from "@/lib/auth-api";
 
 type DeliveryMethod = "pickup" | "delivery" | "scheduled";
 
@@ -22,6 +23,14 @@ interface LastOrder {
   customer_name: string;
   customer_phone: string;
   delivery_method: DeliveryMethod;
+  payment_method?: "cash_on_delivery" | "transfer";
+  payment_status?:
+    | "pending_payment"
+    | "cash_on_delivery"
+    | "pending_validation"
+    | "approved"
+    | "rejected";
+  payment_receipt_required?: boolean;
   pickup_date?: string;
   pickup_time?: string;
   scheduled_date?: string;
@@ -45,6 +54,29 @@ const getMethodLabel = (method: DeliveryMethod) => {
   return "Recoger en sede";
 };
 
+const getPaymentMethodLabel = (method?: "cash_on_delivery" | "transfer") => {
+  if (method === "transfer") return "Transferencia";
+  return "Pago contra entrega";
+};
+
+const getPaymentStatusLabel = (
+  status?:
+    | "pending_payment"
+    | "cash_on_delivery"
+    | "pending_validation"
+    | "approved"
+    | "rejected",
+) => {
+  const labels: Record<string, string> = {
+    pending_payment: "Pendiente de pago",
+    cash_on_delivery: "Pago contra entrega",
+    pending_validation: "Pendiente de validacion",
+    approved: "Pago aprobado",
+    rejected: "Pago rechazado",
+  };
+  return labels[status || ""] || "Pendiente";
+};
+
 export default function MiPedidoPage() {
   const [lastOrder, setLastOrder] = useState<LastOrder | null>(null);
 
@@ -61,6 +93,43 @@ export default function MiPedidoPage() {
       setLastOrder(null);
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!lastOrder?.id) return;
+
+    const token = localStorage.getItem("cce_token");
+    if (!token) return;
+
+    let cancelled = false;
+
+    const refreshOrderStatus = async () => {
+      try {
+        const history = await authApi.myOrderHistory(token);
+        if (cancelled) return;
+        const updated = history.results?.find(
+          (order) => order.id === lastOrder.id,
+        );
+        if (!updated) return;
+
+        const nextOrder: LastOrder = {
+          ...lastOrder,
+          payment_method: updated.payment_method,
+          payment_status: updated.payment_status,
+        };
+        setLastOrder(nextOrder);
+        localStorage.setItem("cce_last_order", JSON.stringify(nextOrder));
+      } catch {
+        // Keep cached order if refresh fails.
+      }
+    };
+
+    void refreshOrderStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lastOrder?.id]);
 
   const total = useMemo(() => {
     if (!lastOrder) return 0;
@@ -121,6 +190,8 @@ export default function MiPedidoPage() {
           <div className="mt-3 grid gap-2 text-sm text-[var(--foreground)] md:grid-cols-2">
             <p><strong>Nombre:</strong> {lastOrder.customer_name}</p>
             <p><strong>Teléfono:</strong> {lastOrder.customer_phone}</p>
+            <p><strong>Metodo de pago:</strong> {getPaymentMethodLabel(lastOrder.payment_method)}</p>
+            <p><strong>Estado de pago:</strong> {getPaymentStatusLabel(lastOrder.payment_status)}</p>
             {lastOrder.delivery_method === "pickup" && (
               <>
                 <p><strong>Fecha de recogida:</strong> {lastOrder.pickup_date || "No registrada"}</p>
@@ -143,6 +214,15 @@ export default function MiPedidoPage() {
             )}
           </div>
         </section>
+
+        {lastOrder.payment_receipt_required && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            No pudimos registrar el comprobante. Puedes subirlo desde la seccion de
+            <Link href="/ordenes" className="ml-1 font-semibold underline">
+              Mis pedidos
+            </Link>.
+          </div>
+        )}
 
         <section>
           <h2 className="mb-3 text-lg font-semibold text-[var(--primary)]">Productos solicitados</h2>

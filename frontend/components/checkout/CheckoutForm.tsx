@@ -6,6 +6,7 @@ import useAuth from "@/context/AuthContext";
 import * as authApi from "@/lib/auth-api";
 import * as cartApi from "@/lib/cart-api";
 import { getOrderAvailability, type PublicOrderAvailability } from "@/lib/catalog-api";
+import { getManualPaymentSettings, type ManualPaymentSettings } from "@/lib/payment-settings-api";
 import {
   validateDeliveryAddress,
   type DeliveryValidationResponse,
@@ -32,6 +33,7 @@ interface CheckoutFormData {
   customer_phone: string;
   customer_email: string;
   delivery_method: "pickup" | "delivery" | "scheduled";
+  payment_method: "cash_on_delivery" | "transfer";
   pickup_date: string;
   pickup_time: string;
   scheduled_date: string;
@@ -57,14 +59,18 @@ export default function CheckoutForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availability, setAvailability] = useState<PublicOrderAvailability | null>(null);
+  const [paymentSettings, setPaymentSettings] = useState<ManualPaymentSettings | null>(null);
   const [deliveryValidation, setDeliveryValidation] =
     useState<DeliveryValidationResponse | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<CheckoutFormData>({
     customer_name: "",
     customer_phone: "",
     customer_email: "",
     delivery_method: "pickup",
+    payment_method: "cash_on_delivery",
     pickup_date: "",
     pickup_time: "",
     scheduled_date: "",
@@ -77,6 +83,8 @@ export default function CheckoutForm() {
       item.is_active && item.applies_to === "all" && item.date === getBogotaISODate(),
   );
   const ordersDisabledGlobally = availability ? !availability.is_accepting_orders : false;
+  const receiptMaxBytes = paymentSettings?.receipt_max_bytes ?? 5 * 1024 * 1024;
+  const receiptMaxMb = Math.round(receiptMaxBytes / (1024 * 1024));
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -87,6 +95,26 @@ export default function CheckoutForm() {
     setFormData((prev) => ({ ...prev, [name]: nextValue }));
     if (name === "delivery_address") {
       setDeliveryValidation(null);
+    }
+    if (name === "payment_method") {
+      setReceiptFile(null);
+      setReceiptError(null);
+    }
+  };
+
+  const handleReceiptChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setReceiptFile(file);
+    setReceiptError(null);
+
+    if (!file) {
+      return;
+    }
+
+    const maxBytes = paymentSettings?.receipt_max_bytes ?? 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      const maxMb = Math.round(maxBytes / (1024 * 1024));
+      setReceiptError(`El archivo supera el limite de ${maxMb} MB.`);
     }
   };
 
@@ -195,6 +223,32 @@ export default function CheckoutForm() {
       }
     }
 
+    if (formData.payment_method === "transfer") {
+      if (paymentSettings && !paymentSettings.is_active) {
+        setError("El pago por transferencia no esta disponible en este momento.");
+        setLoading(false);
+        return;
+      }
+
+      if (!receiptFile) {
+        setError("Debes subir el comprobante para confirmar el pago online.");
+        setLoading(false);
+        return;
+      }
+
+      if (receiptError) {
+        setError(receiptError);
+        setLoading(false);
+        return;
+      }
+
+      if (!token) {
+        setError("Debes iniciar sesion para subir el comprobante.");
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       // 🔥 OBTENER EL CARRITO ANTES DE CREAR LA ORDEN
       let cartSnapshot: CartSnapshot | null = null;
@@ -224,6 +278,7 @@ export default function CheckoutForm() {
           customer_email: formData.customer_email.trim(),
         }),
         delivery_method: formData.delivery_method,
+        payment_method: formData.payment_method,
         status: "pending",
         ...(formData.delivery_method === "pickup" && {
           pickup_date: formData.pickup_date,
@@ -269,6 +324,31 @@ export default function CheckoutForm() {
       const createdOrder = await response.json();
       console.log("✅ Orden creada:", createdOrder); // Para debugging
 
+      let paymentStatus: string =
+        formData.payment_method === "cash_on_delivery"
+          ? "cash_on_delivery"
+          : "pending_payment";
+      let paymentReceiptRequired = false;
+
+      if (
+        formData.payment_method === "transfer" &&
+        receiptFile &&
+        token &&
+        createdOrder?.id
+      ) {
+        try {
+          const updatedOrder = await authApi.uploadMyPaymentReceipt(
+            token,
+            createdOrder.id,
+            receiptFile,
+          );
+          paymentStatus = updatedOrder.payment_status || "pending_validation";
+        } catch (uploadError) {
+          console.error("❌ Error subiendo comprobante:", uploadError);
+          paymentReceiptRequired = true;
+        }
+      }
+
       // Guardar en localStorage para la página de confirmación
       if (typeof window !== "undefined") {
         localStorage.setItem(
@@ -279,6 +359,9 @@ export default function CheckoutForm() {
             customer_name: formData.customer_name,
             customer_phone: formData.customer_phone,
             delivery_method: formData.delivery_method,
+            payment_method: formData.payment_method,
+            payment_status: paymentStatus,
+            payment_receipt_required: paymentReceiptRequired,
             pickup_date: formData.pickup_date,
             pickup_time: formData.pickup_time,
             scheduled_date: formData.scheduled_date,
@@ -395,6 +478,19 @@ export default function CheckoutForm() {
     void loadAvailability();
   }, []);
 
+  useEffect(() => {
+    const loadPaymentSettings = async () => {
+      try {
+        const data = await getManualPaymentSettings();
+        setPaymentSettings(data);
+      } catch {
+        setPaymentSettings(null);
+      }
+    };
+
+    void loadPaymentSettings();
+  }, []);
+
   return (
     <main className="min-h-screen bg-[var(--background)] px-4 py-10 md:px-10">
       <div className="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-[0_8px_30px_rgba(31,92,58,0.08)] md:p-8">
@@ -481,6 +577,114 @@ export default function CheckoutForm() {
               <p className="mt-1 text-xs font-medium text-red-700">
                 El selector está bloqueado por cierre global de pedidos.
               </p>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-[color-mix(in_srgb,var(--primary)_12%,white)] bg-[color-mix(in_srgb,var(--secondary)_10%,white)] p-4">
+            <h3 className="mb-3 font-semibold text-[var(--primary)]">Metodo de pago *</h3>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label
+                className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 text-sm transition ${
+                  formData.payment_method === "cash_on_delivery"
+                    ? "border-[var(--primary)] bg-white"
+                    : "border-[color-mix(in_srgb,var(--primary)_14%,white)] bg-white"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="payment_method"
+                  value="cash_on_delivery"
+                  checked={formData.payment_method === "cash_on_delivery"}
+                  onChange={handleChange}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-semibold text-[var(--primary)]">Pago contra entrega</span>
+                  <span className="mt-1 block text-xs text-[var(--muted-foreground)]">
+                    Pagas en efectivo al recibir el pedido.
+                  </span>
+                </span>
+              </label>
+
+              <label
+                className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 text-sm transition ${
+                  formData.payment_method === "transfer"
+                    ? "border-[var(--primary)] bg-white"
+                    : "border-[color-mix(in_srgb,var(--primary)_14%,white)] bg-white"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="payment_method"
+                  value="transfer"
+                  checked={formData.payment_method === "transfer"}
+                  onChange={handleChange}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-semibold text-[var(--primary)]">Pago online (transferencia)</span>
+                  <span className="mt-1 block text-xs text-[var(--muted-foreground)]">
+                    Subes el comprobante y validamos manualmente.
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            {formData.payment_method === "transfer" && (
+              <div className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--primary)_14%,white)] bg-white p-4">
+                <div className="grid gap-4 md:grid-cols-[160px_1fr]">
+                  <div className="flex items-center justify-center rounded-lg border border-dashed border-[color-mix(in_srgb,var(--primary)_20%,white)] bg-[var(--background)] p-3">
+                    {paymentSettings?.qr_image ? (
+                      <img
+                        src={paymentSettings.qr_image}
+                        alt="QR pago"
+                        className="h-28 w-28 object-contain"
+                      />
+                    ) : (
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        QR no disponible
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-sm text-[var(--foreground)]">
+                    <p className="font-semibold text-[var(--primary)]">
+                      Datos para transferencia
+                    </p>
+                    <div className="mt-2 space-y-1">
+                      <p><strong>Banco:</strong> {paymentSettings?.bank_name || "Por definir"}</p>
+                      <p><strong>Cuenta:</strong> {paymentSettings?.account_number || "Por definir"}</p>
+                      <p><strong>Tipo:</strong> {paymentSettings?.account_type || "Por definir"}</p>
+                      <p><strong>Titular:</strong> {paymentSettings?.account_holder || "Por definir"}</p>
+                      {paymentSettings?.transfer_key && (
+                        <p><strong>Llave:</strong> {paymentSettings.transfer_key}</p>
+                      )}
+                    </div>
+                    {paymentSettings?.instructions && (
+                      <p className="mt-3 text-xs text-[var(--muted-foreground)]">
+                        {paymentSettings.instructions}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="mb-1 block text-sm font-medium text-[var(--primary)]">
+                    Subir comprobante (JPG, PNG o PDF) *
+                  </label>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    onChange={handleReceiptChange}
+                    className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2 text-sm"
+                  />
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                    Tamano maximo: {receiptMaxMb} MB.
+                  </p>
+                  {receiptError && (
+                    <p className="mt-2 text-xs font-semibold text-red-700">{receiptError}</p>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 

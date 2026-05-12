@@ -30,6 +30,7 @@ export interface OrderHistoryItem {
   customer_phone: string;
   customer_email: string | null;
   delivery_method: "pickup" | "delivery" | "scheduled";
+  payment_method: "cash_on_delivery" | "transfer";
   status:
     | "pending"
     | "confirmed"
@@ -37,6 +38,14 @@ export interface OrderHistoryItem {
     | "ready"
     | "completed"
     | "cancelled";
+  payment_status:
+    | "pending_payment"
+    | "cash_on_delivery"
+    | "pending_validation"
+    | "approved"
+    | "rejected";
+  payment_receipt?: string | null;
+  payment_receipt_uploaded_at?: string | null;
   pickup_date: string | null;
   pickup_time: string | null;
   scheduled_date: string | null;
@@ -221,6 +230,31 @@ export async function cancelMyOrder(token: string, orderId: number) {
   }) as Promise<OrderHistoryItem>;
 }
 
+export async function uploadMyPaymentReceipt(
+  token: string,
+  orderId: number,
+  file: File,
+) {
+  const formData = new FormData();
+  formData.append("payment_receipt", file);
+
+  const response = await fetch(`${API_BASE_URL}/orders/${orderId}/payment/receipt/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Token ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const message = body.detail || body.payment_receipt?.[0] || "No se pudo subir el comprobante";
+    throw new Error(message);
+  }
+
+  return (await response.json()) as OrderHistoryItem;
+}
+
 const authApi = {
   register,
   login,
@@ -229,6 +263,7 @@ const authApi = {
   updateMe,
   myOrderHistory,
   cancelMyOrder,
+  uploadMyPaymentReceipt,
 };
 
 export default authApi;

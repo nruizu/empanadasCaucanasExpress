@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.conf import settings
 from decimal import Decimal
 from django.db import transaction
 from django.contrib.auth.models import User
@@ -13,6 +14,7 @@ from backend.login.utils import get_user_profile
 from .models import (
     Category,
     DeliveryCoverageSettings,
+    ManualPaymentSettings,
     Product,
     Order,
     OrderItem,
@@ -127,6 +129,10 @@ class OrderSerializer(serializers.ModelSerializer):
             "customer_email",
             "delivery_method",
             "status",
+            "payment_method",
+            "payment_status",
+            "payment_receipt",
+            "payment_receipt_uploaded_at",
             "assigned_courier",
             "assigned_courier_display_name",
             "assigned_at",
@@ -151,7 +157,14 @@ class OrderSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "created_at", "updated_at", "total_amount")
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+            "total_amount",
+            "payment_receipt",
+            "payment_receipt_uploaded_at",
+        )
 
     def get_created_by_username(self, obj):
         if obj.created_by_id and obj.created_by:
@@ -219,6 +232,14 @@ class OrderSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop("order_items", [])
+
+        payment_method = validated_data.get("payment_method", "cash_on_delivery")
+        if "payment_status" not in validated_data:
+            validated_data["payment_status"] = (
+                "cash_on_delivery"
+                if payment_method == "cash_on_delivery"
+                else "pending_payment"
+            )
 
         if validated_data.get("assigned_courier") and not validated_data.get(
             "assigned_at"
@@ -292,6 +313,40 @@ class OrderSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+class OrderPaymentReceiptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ("payment_receipt",)
+
+    def validate_payment_receipt(self, value):
+        allowed_types = {"image/jpeg", "image/png", "application/pdf"}
+        content_type = getattr(value, "content_type", "")
+        if content_type and content_type not in allowed_types:
+            raise serializers.ValidationError("Formato invalido. Solo JPG, PNG o PDF.")
+
+        max_bytes = getattr(settings, "PAYMENT_RECEIPT_MAX_BYTES", 5 * 1024 * 1024)
+        if value.size > max_bytes:
+            max_mb = max_bytes / (1024 * 1024)
+            raise serializers.ValidationError(
+                f"El archivo excede el maximo permitido ({max_mb:.0f} MB)."
+            )
+        return value
+
+    def update(self, instance, validated_data):
+        instance.payment_receipt = validated_data["payment_receipt"]
+        instance.payment_receipt_uploaded_at = timezone.now()
+        instance.payment_status = "pending_validation"
+        instance.save(
+            update_fields=[
+                "payment_receipt",
+                "payment_receipt_uploaded_at",
+                "payment_status",
+                "updated_at",
+            ]
+        )
+        return instance
+
+
 class RestrictedDateSerializer(serializers.ModelSerializer):
     class Meta:
         model = RestrictedDate
@@ -313,6 +368,24 @@ class OrderAvailabilityConfigSerializer(serializers.ModelSerializer):
             "delivery_sunday_close",
             "is_accepting_orders",
             "order_notice",
+            "updated_at",
+        )
+        read_only_fields = ("updated_at",)
+
+
+class ManualPaymentSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ManualPaymentSettings
+        fields = (
+            "singleton_id",
+            "is_active",
+            "bank_name",
+            "account_number",
+            "account_type",
+            "account_holder",
+            "transfer_key",
+            "qr_image",
+            "instructions",
             "updated_at",
         )
         read_only_fields = ("updated_at",)

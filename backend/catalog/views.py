@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 import logging
+from django.conf import settings
 from rest_framework import filters, generics, status
 from rest_framework import serializers
 from rest_framework.pagination import PageNumberPagination
@@ -10,6 +11,7 @@ from rest_framework.views import APIView
 from .models import (
     Category,
     DeliveryCoverageSettings,
+    ManualPaymentSettings,
     Order,
     OrderAvailabilityConfig,
     Product,
@@ -18,12 +20,14 @@ from .models import (
 from .serializers import (
     CategorySerializer,
     DeliveryCoverageSettingsSerializer,
+    ManualPaymentSettingsSerializer,
     OrderAvailabilityConfigSerializer,
     ProductAdminSerializer,
     ProductSerializer,
     PublicOrderAvailabilitySerializer,
     RestrictedDateSerializer,
     OrderSerializer,
+    OrderPaymentReceiptSerializer,
 )
 from .services.delivery_geo import validate_delivery_address
 from backend.login.permissions import IsCourierUser
@@ -154,6 +158,10 @@ class OrderListCreateView(generics.ListCreateAPIView):
 
         return queryset
 
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(user=user, order_source="online")
+
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
@@ -173,6 +181,68 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
         .prefetch_related("items__product")
         .all()
     )
+
+
+class OrderPaymentReceiptUploadView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, pk: int):
+        order = get_object_or_404(Order, pk=pk, user=request.user)
+
+        if order.payment_method != "transfer":
+            return Response(
+                {"detail": "Este pedido no requiere comprobante."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if order.payment_status == "approved":
+            return Response(
+                {"detail": "El pago ya fue aprobado."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = OrderPaymentReceiptSerializer(
+            order,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
+
+
+class AdminOrderPaymentDecisionView(APIView):
+    permission_classes = (IsAdminUser,)
+
+    def post(self, request, pk: int, action: str):
+        order = get_object_or_404(Order, pk=pk)
+
+        if order.payment_method != "transfer":
+            return Response(
+                {"detail": "Este pedido no es de pago por transferencia."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if action == "approve":
+            if not order.payment_receipt:
+                return Response(
+                    {"detail": "Debe existir un comprobante para aprobar."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            order.payment_status = "approved"
+            if order.status == "pending":
+                order.status = "confirmed"
+        elif action == "reject":
+            order.payment_status = "rejected"
+        else:
+            return Response(
+                {"detail": "Accion invalida."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        order.save(update_fields=["payment_status", "status", "updated_at"])
+        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
 
 
 class CourierAssignedOrderListView(generics.ListAPIView):
@@ -199,6 +269,51 @@ class AdminOrderAvailabilityConfigView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return OrderAvailabilityConfig.get_solo()
+
+
+class PublicManualPaymentSettingsView(APIView):
+    permission_classes = (AllowAny,)
+
+    def get(self, _request):
+        config = ManualPaymentSettings.get_solo()
+        data = ManualPaymentSettingsSerializer(config).data
+        data["receipt_max_bytes"] = getattr(
+            settings, "PAYMENT_RECEIPT_MAX_BYTES", 5 * 1024 * 1024
+        )
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class AdminManualPaymentSettingsView(APIView):
+    permission_classes = (IsAdminUser,)
+
+    def get(self, _request):
+        config = ManualPaymentSettings.get_solo()
+        data = ManualPaymentSettingsSerializer(config).data
+        data["receipt_max_bytes"] = getattr(
+            settings, "PAYMENT_RECEIPT_MAX_BYTES", 5 * 1024 * 1024
+        )
+        return Response(data, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        return self._save(request, partial=True)
+
+    def patch(self, request):
+        return self._save(request, partial=True)
+
+    def _save(self, request, partial: bool):
+        instance = ManualPaymentSettings.get_solo()
+        serializer = ManualPaymentSettingsSerializer(
+            instance,
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        saved = serializer.save()
+        data = ManualPaymentSettingsSerializer(saved).data
+        data["receipt_max_bytes"] = getattr(
+            settings, "PAYMENT_RECEIPT_MAX_BYTES", 5 * 1024 * 1024
+        )
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class AdminRestrictedDateListCreateView(generics.ListCreateAPIView):

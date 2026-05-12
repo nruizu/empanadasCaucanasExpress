@@ -71,6 +71,8 @@ class ManualSaleSerializer(serializers.Serializer):
             order_source="manual",
             created_by=user,
             user=user,
+            payment_method="cash_on_delivery",
+            payment_status="approved",
             total_amount=Decimal("0.00"),
         )
 

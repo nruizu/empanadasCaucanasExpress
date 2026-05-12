@@ -8,6 +8,8 @@ import {
   deleteAdminOrder,
   getAdminOrders,
   updateAdminOrder,
+  approveAdminOrderPayment,
+  rejectAdminOrderPayment,
 } from "@/lib/admin-orders-api";
 import type { OrderHistoryItem } from "@/lib/auth-api";
 import type { AdminCourierOption } from "@/lib/admin-orders-api";
@@ -39,10 +41,31 @@ const STATUS_SELECT_STYLES: Record<string, string> = {
   cancelled: "border-rose-300 text-rose-800 bg-rose-50",
 };
 
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  pending_payment: "Pendiente de pago",
+  cash_on_delivery: "Pago contra entrega",
+  pending_validation: "Pendiente de validacion",
+  approved: "Pago aprobado",
+  rejected: "Pago rechazado",
+};
+
+const PAYMENT_STATUS_BADGES: Record<string, string> = {
+  pending_payment: "bg-amber-100 text-amber-800",
+  cash_on_delivery: "bg-emerald-100 text-emerald-800",
+  pending_validation: "bg-sky-100 text-sky-800",
+  approved: "bg-green-100 text-green-800",
+  rejected: "bg-rose-100 text-rose-800",
+};
+
 const DELIVERY_LABELS: Record<string, string> = {
   pickup: "Recoger en tienda",
   delivery: "Domicilio",
   scheduled: "Programado",
+};
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash_on_delivery: "Contra entrega",
+  transfer: "Transferencia",
 };
 
 function formatDate(dateValue: string | null) {
@@ -98,6 +121,7 @@ export default function AdminOrdersPage() {
   const [couriers, setCouriers] = useState<AdminCourierOption[]>([]);
   const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
   const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<number | null>(null);
 
   const [deliveryMethod, setDeliveryMethod] = useState<
     "" | "pickup" | "delivery" | "scheduled"
@@ -265,6 +289,36 @@ export default function AdminOrdersPage() {
       );
     } finally {
       setUpdatingOrderId(null);
+    }
+  };
+
+  const handlePaymentDecision = async (
+    orderId: number,
+    action: "approve" | "reject",
+  ) => {
+    setError(null);
+    setSuccess(null);
+    setUpdatingPaymentId(orderId);
+
+    try {
+      const updatedOrder =
+        action === "approve"
+          ? await approveAdminOrderPayment(orderId)
+          : await rejectAdminOrderPayment(orderId);
+      setOrders((current) =>
+        current.map((order) => (order.id === orderId ? updatedOrder : order)),
+      );
+      setSuccess(
+        action === "approve"
+          ? "Pago aprobado correctamente."
+          : "Pago rechazado correctamente.",
+      );
+    } catch (decisionError: unknown) {
+      setError(
+        getErrorMessage(decisionError, "No se pudo actualizar el pago."),
+      );
+    } finally {
+      setUpdatingPaymentId(null);
     }
   };
 
@@ -504,6 +558,15 @@ export default function AdminOrdersPage() {
                       >
                         {STATUS_LABELS[order.status] || order.status}
                       </span>
+                      <span
+                        className={`rounded px-2 py-1 text-sm ${
+                          PAYMENT_STATUS_BADGES[order.payment_status] ||
+                          "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {PAYMENT_STATUS_LABELS[order.payment_status] ||
+                          order.payment_status}
+                      </span>
                       <button
                         type="button"
                         onClick={() =>
@@ -542,6 +605,16 @@ export default function AdminOrdersPage() {
                     <p>
                       <strong>Total:</strong> $
                       {Number(order.total_amount).toFixed(0)}
+                    </p>
+                    <p>
+                      <strong>Metodo de pago:</strong>{" "}
+                      {PAYMENT_METHOD_LABELS[order.payment_method] ||
+                        order.payment_method}
+                    </p>
+                    <p>
+                      <strong>Estado de pago:</strong>{" "}
+                      {PAYMENT_STATUS_LABELS[order.payment_status] ||
+                        order.payment_status}
                     </p>
                     {order.delivery_method === "delivery" && (
                       <>
@@ -583,6 +656,53 @@ export default function AdminOrdersPage() {
                         {order.address_validation_message}
                       </p>
                     )}
+
+                  {order.payment_method === "transfer" && (
+                    <div className="mt-3 rounded border border-[color-mix(in_srgb,var(--cce-green-dark)_18%,white)] bg-[color-mix(in_srgb,var(--cce-beige)_45%,white)] p-3 text-sm">
+                      <p>
+                        <strong>Comprobante:</strong>{" "}
+                        {order.payment_receipt ? (
+                          <a
+                            href={order.payment_receipt}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-[var(--cce-green-dark)] underline"
+                          >
+                            Ver comprobante
+                          </a>
+                        ) : (
+                          "No cargado"
+                        )}
+                      </p>
+
+                      {order.payment_status === "pending_validation" && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void handlePaymentDecision(order.id, "approve")
+                            }
+                            disabled={updatingPaymentId === order.id}
+                            className="inline-flex rounded bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                          >
+                            {updatingPaymentId === order.id
+                              ? "Procesando..."
+                              : "Aprobar pago"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void handlePaymentDecision(order.id, "reject")
+                            }
+                            disabled={updatingPaymentId === order.id}
+                            className="inline-flex rounded bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+                          >
+                            Rechazar pago
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <label
