@@ -15,6 +15,27 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelado",
 };
 
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  pending_payment: "Pendiente de pago",
+  cash_on_delivery: "Pago contra entrega",
+  pending_validation: "Pendiente de validacion",
+  approved: "Pago aprobado",
+  rejected: "Pago rechazado",
+};
+
+const PAYMENT_STATUS_BADGES: Record<string, string> = {
+  pending_payment: "bg-amber-100 text-amber-800",
+  cash_on_delivery: "bg-emerald-100 text-emerald-800",
+  pending_validation: "bg-sky-100 text-sky-800",
+  approved: "bg-green-100 text-green-800",
+  rejected: "bg-rose-100 text-rose-800",
+};
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash_on_delivery: "Contra entrega",
+  transfer: "Transferencia",
+};
+
 const STATUS_BADGE_STYLES: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
   confirmed: "bg-sky-100 text-sky-800",
@@ -68,6 +89,12 @@ export default function OrderHistoryPage() {
   const [orders, setOrders] = useState<authApi.OrderHistoryItem[]>([]);
   const [expandedOrders, setExpandedOrders] = useState<Record<number, boolean>>(
     {},
+  );
+  const [receiptDrafts, setReceiptDrafts] = useState<Record<number, File | null>>(
+    {},
+  );
+  const [uploadingReceiptId, setUploadingReceiptId] = useState<number | null>(
+    null,
   );
   const [nowMs, setNowMs] = useState(Date.now());
   const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(
@@ -201,6 +228,44 @@ export default function OrderHistoryPage() {
     }
   };
 
+  const handleReceiptUpload = async (orderId: number) => {
+    if (!token) {
+      setError("Debes iniciar sesion para subir el comprobante.");
+      return;
+    }
+
+    const file = receiptDrafts[orderId];
+    if (!file) {
+      setError("Selecciona un archivo antes de subir el comprobante.");
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setUploadingReceiptId(orderId);
+
+    try {
+      const updatedOrder = await authApi.uploadMyPaymentReceipt(
+        token,
+        orderId,
+        file,
+      );
+      setOrders((current) =>
+        current.map((order) => (order.id === orderId ? updatedOrder : order)),
+      );
+      setReceiptDrafts((current) => ({ ...current, [orderId]: null }));
+      setSuccess("Comprobante enviado para validacion.");
+    } catch (uploadError: unknown) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "No se pudo subir el comprobante.",
+      );
+    } finally {
+      setUploadingReceiptId(null);
+    }
+  };
+
   if (loading) {
     return (
       <main className="min-h-screen bg-[var(--cce-beige)] px-4 py-10 md:px-10">
@@ -245,6 +310,15 @@ export default function OrderHistoryPage() {
                         }`}
                       >
                         {STATUS_LABELS[order.status] || order.status}
+                      </span>
+                      <span
+                        className={`text-sm px-2 py-1 rounded ${
+                          PAYMENT_STATUS_BADGES[order.payment_status] ||
+                          "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {PAYMENT_STATUS_LABELS[order.payment_status] ||
+                          order.payment_status}
                       </span>
                       <button
                         type="button"
@@ -293,6 +367,9 @@ export default function OrderHistoryPage() {
                 <p className="text-sm text-gray-700">
                   <strong>Total:</strong> $
                   {Number(order.total_amount).toFixed(0)}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <strong>Pago:</strong> {PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method} · {PAYMENT_STATUS_LABELS[order.payment_status] || order.payment_status}
                 </p>
 
                 {canCancelOrder(order) && (
@@ -365,6 +442,56 @@ export default function OrderHistoryPage() {
 
                 {expandedOrders[order.id] && (
                   <div className="mt-4 border-t pt-4">
+                    {order.payment_method === "transfer" && (
+                      <div className="mb-4 rounded border border-[color-mix(in_srgb,var(--cce-green-dark)_15%,white)] bg-[color-mix(in_srgb,var(--cce-beige)_40%,white)] p-3 text-sm">
+                        <p>
+                          <strong>Comprobante:</strong>{" "}
+                          {order.payment_receipt ? (
+                            <a
+                              href={order.payment_receipt}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-semibold text-[var(--cce-green-dark)] underline"
+                            >
+                              Ver comprobante
+                            </a>
+                          ) : (
+                            "No cargado"
+                          )}
+                        </p>
+
+                        {(order.payment_status === "pending_payment" ||
+                          order.payment_status === "rejected") && (
+                          <div className="mt-3">
+                            <label className="mb-1 block text-sm font-semibold">
+                              Subir nuevo comprobante (JPG, PNG o PDF)
+                            </label>
+                            <input
+                              type="file"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                              onChange={(event) =>
+                                setReceiptDrafts((current) => ({
+                                  ...current,
+                                  [order.id]: event.target.files?.[0] ?? null,
+                                }))
+                              }
+                              className="w-full rounded border border-[color-mix(in_srgb,var(--cce-green-dark)_15%,white)] bg-white px-3 py-2 text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void handleReceiptUpload(order.id)}
+                              disabled={uploadingReceiptId === order.id}
+                              className="mt-2 inline-flex rounded bg-[var(--cce-green-dark)] px-3 py-1 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                            >
+                              {uploadingReceiptId === order.id
+                                ? "Subiendo..."
+                                : "Enviar comprobante"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <h3 className="font-semibold mb-3">Productos del pedido</h3>
                     {order.items.length === 0 ? (
                       <p className="text-sm text-gray-600">

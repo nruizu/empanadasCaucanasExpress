@@ -9,12 +9,16 @@ from .views import (
     AdminProductListCreateView,
     AdminRestrictedDateDetailView,
     AdminRestrictedDateListCreateView,
+    AdminManualPaymentSettingsView,
     CategoryProductListView,
     DeliveryAddressValidationView,
     FeaturedProductListView,
     CourierAssignedOrderListView,
+    OrderPaymentReceiptUploadView,
+    AdminOrderPaymentDecisionView,
     OrderListCreateView,
     OrderDetailView,
+    PublicManualPaymentSettingsView,
     PublicOrderAvailabilityView,
 )
 
@@ -52,6 +56,16 @@ urlpatterns = [
         name="order-list-create",
     ),
     path(
+        "orders/<int:pk>/payment/receipt/",
+        OrderPaymentReceiptUploadView.as_view(),
+        name="order-payment-receipt",
+    ),
+    path(
+        "orders/<int:pk>/payment/<str:action>/",
+        AdminOrderPaymentDecisionView.as_view(),
+        name="admin-order-payment-decision",
+    ),
+    path(
         "orders/assigned/",
         CourierAssignedOrderListView.as_view(),
         name="order-assigned-list",
@@ -72,9 +86,19 @@ urlpatterns = [
         name="public-order-availability",
     ),
     path(
+        "payment-settings/",
+        PublicManualPaymentSettingsView.as_view(),
+        name="public-manual-payment-settings",
+    ),
+    path(
         "admin/order-availability/",
         AdminOrderAvailabilityConfigView.as_view(),
         name="admin-order-availability",
+    ),
+    path(
+        "admin/payment-settings/",
+        AdminManualPaymentSettingsView.as_view(),
+        name="admin-manual-payment-settings",
     ),
     path(
         "admin/restricted-dates/",
