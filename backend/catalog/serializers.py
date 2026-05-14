@@ -339,7 +339,10 @@ class OrderSerializer(serializers.ModelSerializer):
             or instance.delivery_longitude is None
         )
 
-        if effective_delivery_method in {"delivery", "scheduled"} and should_revalidate_delivery:
+        if (
+            effective_delivery_method in {"delivery", "scheduled"}
+            and should_revalidate_delivery
+        ):
             self._validate_and_fill_delivery_data(
                 validated_data,
                 effective_delivery_method,

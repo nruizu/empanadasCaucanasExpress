@@ -429,7 +429,9 @@ class Order(models.Model):
             if self.scheduled_date < timezone.now().date():
                 raise ValidationError("La fecha programada debe ser una fecha futura")
 
-            restricted = self._is_restricted_date(self.scheduled_date, "scheduled") or self._is_restricted_date(
+            restricted = self._is_restricted_date(
+                self.scheduled_date, "scheduled"
+            ) or self._is_restricted_date(
                 self.scheduled_date,
                 "delivery",
             )
