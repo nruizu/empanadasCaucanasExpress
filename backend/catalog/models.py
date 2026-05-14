@@ -190,6 +190,7 @@ class Order(models.Model):
         ("confirmed", "Confirmado"),
         ("preparing", "En preparación"),
         ("ready", "Listo"),
+        ("in_transit", "En camino"),
         ("completed", "Completado"),
         ("cancelled", "Cancelado"),
     ]
@@ -249,6 +250,7 @@ class Order(models.Model):
         related_name="assigned_orders",
     )
     assigned_at = models.DateTimeField(blank=True, null=True)
+    delivered_at = models.DateTimeField(blank=True, null=True)
     order_source = models.CharField(
         max_length=20,
         choices=[("online", "Online"), ("manual", "Manual")],
@@ -345,7 +347,7 @@ class Order(models.Model):
 
     @property
     def estimated_delivery_time(self):
-        if self.delivery_method != "delivery":
+        if self.delivery_method not in {"delivery", "scheduled"}:
             return None
         return "45-60 minutos"
 
@@ -427,7 +429,10 @@ class Order(models.Model):
             if self.scheduled_date < timezone.now().date():
                 raise ValidationError("La fecha programada debe ser una fecha futura")
 
-            restricted = self._is_restricted_date(self.scheduled_date, "scheduled")
+            restricted = self._is_restricted_date(self.scheduled_date, "scheduled") or self._is_restricted_date(
+                self.scheduled_date,
+                "delivery",
+            )
             if restricted:
                 reason = f" Motivo: {restricted.reason}" if restricted.reason else ""
                 raise ValidationError(
@@ -438,6 +443,21 @@ class Order(models.Model):
             raise ValidationError(
                 "Debe especificar una fecha para el pedido programado"
             )
+
+        if self.delivery_method == "scheduled":
+            address = (self.delivery_address or "").strip()
+            if not address:
+                raise ValidationError("Debe ingresar una dirección para el domicilio")
+
+            if len(address) < 10:
+                raise ValidationError("La dirección de entrega es demasiado corta")
+
+            if not re.search(r"\d", address) or not re.search(
+                r"[A-Za-zÁÉÍÓÚáéíóúÑñ]", address
+            ):
+                raise ValidationError(
+                    "La dirección de entrega debe incluir texto y numeración"
+                )
 
         # HU Domicilio: validar dirección, modalidad y horario de operación.
         # Lunes a sábado: 9:00 AM - 7:30 PM.

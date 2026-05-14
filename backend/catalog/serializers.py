@@ -1,9 +1,13 @@
+import logging
+
 from rest_framework import serializers
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
 from decimal import Decimal
 from django.db import transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
+
 from backend.catalog.services.delivery_geo import (
     DeliveryValidationError,
     geocode_address,
@@ -21,6 +25,8 @@ from .models import (
     OrderAvailabilityConfig,
     RestrictedDate,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -136,6 +142,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "assigned_courier",
             "assigned_courier_display_name",
             "assigned_at",
+            "delivered_at",
             "order_source",
             "created_by",
             "created_by_username",
@@ -164,6 +171,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "total_amount",
             "payment_receipt",
             "payment_receipt_uploaded_at",
+            "delivered_at",
         )
 
     def get_created_by_username(self, obj):
@@ -189,35 +197,63 @@ class OrderSerializer(serializers.ModelSerializer):
         data_without_items = data.copy()
         data_without_items.pop("order_items", None)
 
-        if self.instance:
-            # UPDATE: solo validación básica
-            editable_fields = [
-                field.name
-                for field in Order._meta.fields
-                if field.editable
-                and field.name not in {"id", "created_at", "updated_at"}
-            ]
-            merged_data = {
-                field_name: getattr(self.instance, field_name)
-                for field_name in editable_fields
-            }
-            merged_data.update(data_without_items)
-            instance = Order(**merged_data)
-            instance.clean()
-        else:
-            # CREATE: validación completa
-            instance = Order(**data_without_items)
-            instance.clean()
-            instance.validate_for_creation()
+        try:
+            if self.instance:
+                # UPDATE: solo validación básica
+                editable_fields = [
+                    field.name
+                    for field in Order._meta.fields
+                    if field.editable
+                    and field.name not in {"id", "created_at", "updated_at"}
+                ]
+                merged_data = {
+                    field_name: getattr(self.instance, field_name)
+                    for field_name in editable_fields
+                }
+                merged_data.update(data_without_items)
+                instance = Order(**merged_data)
+                instance.clean()
+            else:
+                # CREATE: validación completa
+                instance = Order(**data_without_items)
+                instance.clean()
+                instance.validate_for_creation()
+        except DjangoValidationError as exc:
+            if getattr(exc, "message_dict", None):
+                raise serializers.ValidationError(exc.message_dict)
+
+            messages = getattr(exc, "messages", None) or [str(exc)]
+            if len(messages) == 1:
+                raise serializers.ValidationError(messages[0])
+
+            raise serializers.ValidationError({"non_field_errors": messages})
+        except serializers.ValidationError:
+            raise
+        except Exception:
+            logger.exception("Error inesperado en validacion de pedido")
+            raise serializers.ValidationError(
+                "Error inesperado al validar el pedido. Intenta nuevamente."
+            )
 
         return data
 
     @staticmethod
     def _validate_and_fill_delivery_data(data, delivery_method, delivery_address):
-        if delivery_method != "delivery":
+        if delivery_method not in {"delivery", "scheduled"}:
             return
 
-        result = validate_delivery_address((delivery_address or "").strip())
+        try:
+            result = validate_delivery_address((delivery_address or "").strip())
+        except Exception:
+            logger.exception("Error inesperado al validar direccion de entrega")
+            raise serializers.ValidationError(
+                {
+                    "delivery_address": (
+                        "No se pudo validar la direccion. "
+                        "Intenta nuevamente o escribe la direccion con mas detalles."
+                    )
+                }
+            )
 
         data["address_validation_status"] = result.status
         data["address_validation_message"] = result.message
@@ -303,7 +339,7 @@ class OrderSerializer(serializers.ModelSerializer):
             or instance.delivery_longitude is None
         )
 
-        if effective_delivery_method == "delivery" and should_revalidate_delivery:
+        if effective_delivery_method in {"delivery", "scheduled"} and should_revalidate_delivery:
             self._validate_and_fill_delivery_data(
                 validated_data,
                 effective_delivery_method,

@@ -48,9 +48,9 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework.authtoken",
+    "backend.login",
     "catalog",
     "backend.cart",
-    "backend.login",
     "backend.report",
 ]
 

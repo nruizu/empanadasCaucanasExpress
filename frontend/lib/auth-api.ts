@@ -36,6 +36,7 @@ export interface OrderHistoryItem {
     | "confirmed"
     | "preparing"
     | "ready"
+    | "in_transit"
     | "completed"
     | "cancelled";
   payment_status:
@@ -64,6 +65,7 @@ export interface OrderHistoryItem {
   assigned_courier?: number | null;
   assigned_courier_display_name?: string | null;
   assigned_at?: string | null;
+  delivered_at?: string | null;
   notes: string | null;
   total_amount: string;
   created_at: string;

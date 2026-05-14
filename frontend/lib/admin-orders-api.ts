@@ -48,6 +48,7 @@ export interface UpdateAdminOrderPayload {
     | "confirmed"
     | "preparing"
     | "ready"
+    | "in_transit"
     | "completed"
     | "cancelled";
   assigned_courier?: number | null;

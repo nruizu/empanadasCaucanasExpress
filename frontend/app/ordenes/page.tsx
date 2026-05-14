@@ -11,6 +11,7 @@ const STATUS_LABELS: Record<string, string> = {
   confirmed: "Confirmado",
   preparing: "En preparacion",
   ready: "Listo",
+  in_transit: "En camino",
   completed: "Completado",
   cancelled: "Cancelado",
 };
@@ -41,6 +42,7 @@ const STATUS_BADGE_STYLES: Record<string, string> = {
   confirmed: "bg-sky-100 text-sky-800",
   preparing: "bg-indigo-100 text-indigo-800",
   ready: "bg-emerald-100 text-emerald-800",
+  in_transit: "bg-orange-100 text-orange-800",
   completed: "bg-gray-100 text-gray-700",
   cancelled: "bg-rose-100 text-rose-800",
 };

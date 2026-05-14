@@ -19,6 +19,7 @@ const STATUS_LABELS: Record<string, string> = {
   confirmed: "Confirmado",
   preparing: "En preparacion",
   ready: "Listo",
+  in_transit: "En camino",
   completed: "Completado",
   cancelled: "Cancelado",
 };
@@ -28,6 +29,7 @@ const STATUS_BADGE_STYLES: Record<string, string> = {
   confirmed: "bg-sky-100 text-sky-800",
   preparing: "bg-indigo-100 text-indigo-800",
   ready: "bg-emerald-100 text-emerald-800",
+  in_transit: "bg-orange-100 text-orange-800",
   completed: "bg-gray-100 text-gray-700",
   cancelled: "bg-rose-100 text-rose-800",
 };
@@ -37,6 +39,7 @@ const STATUS_SELECT_STYLES: Record<string, string> = {
   confirmed: "border-sky-300 text-sky-800 bg-sky-50",
   preparing: "border-indigo-300 text-indigo-800 bg-indigo-50",
   ready: "border-emerald-300 text-emerald-800 bg-emerald-50",
+  in_transit: "border-orange-300 text-orange-800 bg-orange-50",
   completed: "border-gray-300 text-gray-700 bg-gray-50",
   cancelled: "border-rose-300 text-rose-800 bg-rose-50",
 };

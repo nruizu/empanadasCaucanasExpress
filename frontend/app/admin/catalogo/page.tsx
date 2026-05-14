@@ -14,6 +14,10 @@ import {
 } from "@/lib/admin-catalog-api";
 import type { Category, Product } from "@/types/catalog";
 
+const API_IMG_BASE =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ??
+  "http://localhost:8080";
+
 interface ProductFormState {
   name: string;
   slug: string;
@@ -22,6 +26,9 @@ interface ProductFormState {
   is_featured: boolean;
   is_active: boolean;
   category_id: string;
+  imageFile: File | null;
+  removeImage: boolean;
+  existingImage: string | null;
 }
 
 const INITIAL_FORM: ProductFormState = {
@@ -32,17 +39,28 @@ const INITIAL_FORM: ProductFormState = {
   is_featured: false,
   is_active: true,
   category_id: "",
+  imageFile: null,
+  removeImage: false,
+  existingImage: null,
 };
 
-const toPayload = (form: ProductFormState): ProductAdminPayload => ({
-  name: form.name.trim(),
-  slug: form.slug.trim(),
-  description: form.description.trim(),
-  price: form.price,
-  is_featured: form.is_featured,
-  is_active: form.is_active,
-  category_id: Number(form.category_id),
-});
+const toPayload = (form: ProductFormState): ProductAdminPayload => {
+  const payload: ProductAdminPayload = {
+    name: form.name.trim(),
+    slug: form.slug.trim(),
+    description: form.description.trim(),
+    price: form.price,
+    is_featured: form.is_featured,
+    is_active: form.is_active,
+    category_id: Number(form.category_id),
+  };
+  if (form.imageFile) {
+    payload.image = form.imageFile;
+  } else if (form.removeImage) {
+    payload.image = null;
+  }
+  return payload;
+};
 
 export default function AdminCatalogPage() {
   const router = useRouter();
@@ -64,16 +82,22 @@ export default function AdminCatalogPage() {
     setEditingId(null);
   };
 
+  const previewUrl = form.imageFile
+    ? URL.createObjectURL(form.imageFile)
+    : form.existingImage && !form.removeImage
+      ? `${API_IMG_BASE}${form.existingImage}`
+      : null;
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const [productsResponse, categoriesResponse] = await Promise.all([
+      const [productsData, categoriesResponse] = await Promise.all([
         getAdminProducts(),
         getCategories(),
       ]);
-      setProducts(productsResponse.results);
+      setProducts(productsData);
       setCategories(categoriesResponse);
     } catch (loadError) {
       console.error(loadError);
@@ -118,6 +142,9 @@ export default function AdminCatalogPage() {
       is_featured: product.is_featured,
       is_active: product.is_active ?? true,
       category_id: String(product.category.id),
+      imageFile: null,
+      removeImage: false,
+      existingImage: product.image || null,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -284,6 +311,55 @@ export default function AdminCatalogPage() {
               rows={4}
               className="md:col-span-2 rounded-lg border border-[color-mix(in_srgb,var(--cce-green-dark)_20%,white)] px-3 py-2 outline-none focus:border-[var(--cce-green-dark)]"
             />
+
+            <div className="md:col-span-2 space-y-2">
+              <p className="text-sm font-medium text-[var(--cce-green-dark)]">Imagen del producto</p>
+
+              {previewUrl ? (
+                <div className="relative inline-block">
+                  <img
+                    src={previewUrl}
+                    alt="Vista previa"
+                    className="h-32 w-32 rounded-lg border border-gray-200 object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        imageFile: null,
+                        removeImage: true,
+                      }))
+                    }
+                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white hover:bg-red-600"
+                    title="Quitar imagen"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ) : (
+                <div className="flex h-32 w-32 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">
+                  Sin imagen
+                </div>
+              )}
+
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[var(--cce-green-dark)] px-4 py-1.5 text-sm font-semibold text-[var(--cce-green-dark)] hover:bg-[var(--cce-green-dark)] hover:text-white">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setForm((prev) => ({
+                      ...prev,
+                      imageFile: file,
+                      removeImage: false,
+                    }));
+                  }}
+                />
+                {form.imageFile ? "Cambiar imagen" : "Subir imagen"}
+              </label>
+            </div>
 
             <label className="flex items-center gap-2 text-sm text-[var(--cce-green-dark)]">
               <input
