@@ -58,12 +58,10 @@ def run_seed_products():
         "desayunos-desayuno-completo-huevos-arepa-con-quesito"
         "-empanada-caucana-y-porcion-de-morcilla-chorizo-o"
         "-chicharron": "Desayuno completo",
-        "comidas-combo-chorizo-de-cerdo-o-pollo-con-arepa-de"
-        "-chocolo": "Combo Chuzo",
+        "comidas-combo-chorizo-de-cerdo-o-pollo-con-arepa-de" "-chocolo": "Combo Chuzo",
         "comidas-chorizo-pollocerdo-arepa-de-maizchocolo"
         "-pequena-con-queso": "Chuzo pollo o cerdo",
-        "comidas-chorizo-arepa-de-maiz-o-chocolo-pequena"
-        "-con-queso": "Chorizo",
+        "comidas-chorizo-arepa-de-maiz-o-chocolo-pequena" "-con-queso": "Chorizo",
         "comidas-morcilla-porcion-completa-arepa-de-maiz"
         "-o-chocolo-pequena-con-queso": "Morcilla porción completa",
         "comidas-picada-pequena-caucanitas-morcilla-chorizo"
@@ -71,8 +69,7 @@ def run_seed_products():
     }
 
     FEATURED_OVERRIDES = {
-        "comidas-combo-chorizo-de-cerdo-o-pollo-con-arepa"
-        "-de-chocolo": True,
+        "comidas-combo-chorizo-de-cerdo-o-pollo-con-arepa" "-de-chocolo": True,
     }
 
     # (category_slug, name, price, is_active)
