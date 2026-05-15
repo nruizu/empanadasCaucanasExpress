@@ -49,21 +49,36 @@ def run_seed_products():
         )
         categories[slug] = category
 
+    SLUG_OVERRIDES = {
+        "entradas-combo-caucano-caucanitas-palitos-de-queso"
+        "-pastel-de-pollo-papitas-rellenas": "Combo Caucano",
+        "entradas-tufa": "Trufa",
+        "desayunos-desayuno-basico-huevos-arepa-con-quesito"
+        "-empanada-caucana": "Desayuno básico",
+        "desayunos-desayuno-completo-huevos-arepa-con-quesito"
+        "-empanada-caucana-y-porcion-de-morcilla-chorizo-o"
+        "-chicharron": "Desayuno completo",
+        "comidas-combo-chorizo-de-cerdo-o-pollo-con-arepa-de" "-chocolo": "Combo Chuzo",
+        "comidas-chorizo-pollocerdo-arepa-de-maizchocolo"
+        "-pequena-con-queso": "Chuzo pollo o cerdo",
+        "comidas-chorizo-arepa-de-maiz-o-chocolo-pequena" "-con-queso": "Chorizo",
+        "comidas-morcilla-porcion-completa-arepa-de-maiz"
+        "-o-chocolo-pequena-con-queso": "Morcilla porción completa",
+        "comidas-picada-pequena-caucanitas-morcilla-chorizo"
+        "-chicharron-arepas-de-maiz": "Picada pequeña",
+    }
+
+    FEATURED_OVERRIDES = {
+        "comidas-combo-chorizo-de-cerdo-o-pollo-con-arepa" "-de-chocolo": True,
+    }
+
     # (category_slug, name, price, is_active)
     products_data = [
         # Entradas
         ("entradas", "Empanada caucana", "4500", True),
         ("entradas", "Caucanita", "1700", True),
         ("entradas", "Caucanitas x12", "20000", True),
-        (
-            "entradas",
-            (
-                "Combo Caucano (Caucanitas, palitos de queso, pastel de "
-                "pollo, papitas rellenas)"
-            ),
-            "40000",
-            True,
-        ),
+        ("entradas", "Combo Caucano", "40000", True),
         ("entradas", "Carimañola", "7000", True),
         ("entradas", "Palito de queso x2", "6000", True),
         ("entradas", "Pastelito de pollo", "3000", False),
@@ -71,69 +86,25 @@ def run_seed_products():
         ("entradas", "Arepa de huevo", "6000", True),
         ("entradas", "Papita rellena", "2000", True),
         ("entradas", "Papas K-Chips", "8000", True),
-        ("entradas", "Mihajas", "9000", False),
-        ("entradas", "Tufa", "5000", False),
+        ("entradas", "Mihojas", "9000", False),
+        ("entradas", "Trufa", "5000", False),
         ("entradas", "Galletas de corazón (paq)", "13000", True),
         ("entradas", "Cocadas artesanales", "6000", True),
         ("entradas", "Galleta choco nuez", "6000", True),
         # Desayunos
-        (
-            "desayunos",
-            ("Desayuno básico (Huevos, arepa con quesito, empanada caucana)"),
-            "20000",
-            True,
-        ),
-        (
-            "desayunos",
-            (
-                "Desayuno completo (Huevos, arepa con quesito, empanada "
-                "caucana y porción de morcilla, chorizo o chicharrón)"
-            ),
-            "30000",
-            True,
-        ),
+        ("desayunos", "Desayuno básico", "20000", True),
+        ("desayunos", "Desayuno completo", "30000", True),
         # Comidas
-        (
-            "comidas",
-            "Combo (Chorizo de cerdo o pollo con arepa de chocolo)",
-            "30000",
-            True,
-        ),
-        (
-            "comidas",
-            ("Chorizo pollo/cerdo (Arepa de maíz/chocolo pequeña con queso)"),
-            "27000",
-            True,
-        ),
-        (
-            "comidas",
-            "Chorizo (Arepa de maíz o chocolo pequeña con queso)",
-            "18000",
-            True,
-        ),
+        ("comidas", "Combo Chuzo", "30000", True),
+        ("comidas", "Chuzo pollo o cerdo", "27000", True),
+        ("comidas", "Chorizo", "18000", True),
         ("comidas", "Chicharrón 140 g", "24000", True),
         ("comidas", "Chicharrón 160 g", "26000", True),
         ("comidas", "Chicharrón 180 g", "28000", True),
         ("comidas", "Morcilla 1/2 porción", "12000", True),
-        (
-            "comidas",
-            (
-                "Morcilla porción completa (Arepa de maíz o chocolo "
-                "pequeña con queso)"
-            ),
-            "18000",
-            True,
-        ),
+        ("comidas", "Morcilla porción completa", "18000", True),
         ("comidas", "Libra de morcilla fría", "30000", True),
-        (
-            "comidas",
-            (
-                "Picada pequeña (Caucanitas, morcilla, chorizo, "
-                "chicharrón, arepas de maíz)"
-            ),
-            "46000",
-            True,
-        ),
+        ("comidas", "Picada pequeña", "46000", True),
         ("comidas", "Picada 6–8 personas", "95000", True),
         ("comidas", "Arepa de chocolo", "16500", True),
         ("comidas", "Arepa de chocolo pequeña", "8000", True),
@@ -147,12 +118,7 @@ def run_seed_products():
         ("bebidas-calientes", "Capuchino", "8000", True),
         ("bebidas-calientes", "Mocaccino", "9000", True),
         ("bebidas-calientes", "Milo", "8000", True),
-        (
-            "bebidas-calientes",
-            "Aromática frutos deshidratados",
-            "8000",
-            True,
-        ),
+        ("bebidas-calientes", "Aromática frutos deshidratados", "8000", True),
         ("bebidas-calientes", "Aromática Bivaco", "4000", True),
         ("bebidas-calientes", "Infusión", "6000", True),
         ("bebidas-calientes", "Té matcha", "7500", True),
@@ -196,6 +162,14 @@ def run_seed_products():
     for category_slug, name, price, is_active in products_data:
         slug = f"{category_slug}-{slugify(name)}"
 
+        # Use slug override if the name changed in admin (so DB slug stays)
+        for orig_slug, orig_name in SLUG_OVERRIDES.items():
+            if name == orig_name:
+                slug = orig_slug
+                break
+
+        is_featured = FEATURED_OVERRIDES.get(slug, should_be_featured(name))
+
         Product.objects.update_or_create(
             slug=slug,
             defaults={
@@ -204,7 +178,7 @@ def run_seed_products():
                 "price": Decimal(price),
                 "category": categories[category_slug],
                 "is_active": is_active,
-                "is_featured": should_be_featured(name),
+                "is_featured": is_featured,
             },
         )
         processed += 1
