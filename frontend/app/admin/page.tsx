@@ -41,6 +41,11 @@ const adminSections = [
     description: "Ajustar horarios de servicio y fechas bloqueadas.",
     href: "/admin/horarios",
   },
+  {
+    title: "Pagos en línea",
+    description: "Configurar datos de transferencia y código QR de pago.",
+    href: "/admin/pagos",
+  },
 ];
 
 export default function AdminHomePage() {

@@ -324,9 +324,11 @@ class AdminOrderAvailabilityConfigView(generics.RetrieveUpdateAPIView):
 class PublicManualPaymentSettingsView(APIView):
     permission_classes = (AllowAny,)
 
-    def get(self, _request):
+    def get(self, request):
         config = ManualPaymentSettings.get_solo()
-        data = ManualPaymentSettingsSerializer(config).data
+        data = ManualPaymentSettingsSerializer(
+            config, context={"request": request}
+        ).data
         data["receipt_max_bytes"] = getattr(
             settings, "PAYMENT_RECEIPT_MAX_BYTES", 5 * 1024 * 1024
         )
@@ -336,9 +338,11 @@ class PublicManualPaymentSettingsView(APIView):
 class AdminManualPaymentSettingsView(APIView):
     permission_classes = (IsAdminUser,)
 
-    def get(self, _request):
+    def get(self, request):
         config = ManualPaymentSettings.get_solo()
-        data = ManualPaymentSettingsSerializer(config).data
+        data = ManualPaymentSettingsSerializer(
+            config, context={"request": request}
+        ).data
         data["receipt_max_bytes"] = getattr(
             settings, "PAYMENT_RECEIPT_MAX_BYTES", 5 * 1024 * 1024
         )
@@ -356,10 +360,11 @@ class AdminManualPaymentSettingsView(APIView):
             instance,
             data=request.data,
             partial=partial,
+            context={"request": request},
         )
         serializer.is_valid(raise_exception=True)
         saved = serializer.save()
-        data = ManualPaymentSettingsSerializer(saved).data
+        data = ManualPaymentSettingsSerializer(saved, context={"request": request}).data
         data["receipt_max_bytes"] = getattr(
             settings, "PAYMENT_RECEIPT_MAX_BYTES", 5 * 1024 * 1024
         )

@@ -704,13 +704,13 @@ export default function CheckoutForm() {
 
             {formData.payment_method === "transfer" && (
               <div className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--primary)_14%,white)] bg-white p-4">
-                <div className="grid gap-4 md:grid-cols-[160px_1fr]">
-                  <div className="flex items-center justify-center rounded-lg border border-dashed border-[color-mix(in_srgb,var(--primary)_20%,white)] bg-[var(--background)] p-3">
+                <div className="grid gap-4 md:grid-cols-[280px_1fr]">
+                  <div className="flex items-center justify-center rounded-lg border border-dashed border-[color-mix(in_srgb,var(--primary)_20%,white)] bg-white p-2">
                     {paymentSettings?.qr_image ? (
                       <img
                         src={paymentSettings.qr_image}
                         alt="QR pago"
-                        className="h-28 w-28 object-contain"
+                        className="h-64 w-64 object-contain md:h-72 md:w-72"
                       />
                     ) : (
                       <p className="text-xs text-[var(--muted-foreground)]">
@@ -720,16 +720,19 @@ export default function CheckoutForm() {
                   </div>
                   <div className="text-sm text-[var(--foreground)]">
                     <p className="font-semibold text-[var(--primary)]">
-                      Datos para transferencia
+                      Datos para transferencia bancaria
                     </p>
                     <div className="mt-2 space-y-1">
                       <p><strong>Banco:</strong> {paymentSettings?.bank_name || "Por definir"}</p>
                       <p><strong>Cuenta:</strong> {paymentSettings?.account_number || "Por definir"}</p>
                       <p><strong>Tipo:</strong> {paymentSettings?.account_type || "Por definir"}</p>
                       <p><strong>Titular:</strong> {paymentSettings?.account_holder || "Por definir"}</p>
-                      {paymentSettings?.transfer_key && (
-                        <p><strong>Llave:</strong> {paymentSettings.transfer_key}</p>
-                      )}
+                    </div>
+                    <p className="mt-3 font-semibold text-[var(--primary)]">
+                      Llave para transferencia por Bre-B
+                    </p>
+                    <div className="mt-1">
+                      <p>{paymentSettings?.transfer_key || "Por definir"}</p>
                     </div>
                     {paymentSettings?.instructions && (
                       <p className="mt-3 text-xs text-[var(--muted-foreground)]">
@@ -740,17 +743,44 @@ export default function CheckoutForm() {
                 </div>
 
                 <div className="mt-4">
-                  <label className="mb-1 block text-sm font-medium text-[var(--primary)]">
-                    Subir comprobante (JPG, PNG o PDF) *
+                  <p className="mb-2 block text-sm font-semibold text-[var(--primary)]">
+                    Comprobante de pago (JPG, PNG o PDF) *
+                  </p>
+                  <label
+                    htmlFor="receipt-upload"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    Da click aquí para subir comprobante
                   </label>
                   <input
+                    id="receipt-upload"
                     type="file"
                     accept=".jpg,.jpeg,.png,.pdf"
                     onChange={handleReceiptChange}
-                    className="w-full rounded-lg border border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-white px-3 py-2 text-sm"
+                    className="hidden"
                   />
+                  {receiptFile && (
+                    <p className="mt-2 text-xs font-medium text-[var(--primary)]">
+                      Archivo seleccionado: {receiptFile.name}
+                    </p>
+                  )}
                   <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                    Tamano maximo: {receiptMaxMb} MB.
+                    Tamaño máximo: {receiptMaxMb} MB.
                   </p>
                   {receiptError && (
                     <p className="mt-2 text-xs font-semibold text-red-700">{receiptError}</p>
