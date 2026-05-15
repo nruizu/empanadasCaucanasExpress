@@ -92,7 +92,7 @@ export default function AdminSalesPage() {
           getSalesHistory(filters),
           getSalesMetrics(filters),
         ]);
-      setProducts(productsResponse.results);
+      setProducts(productsResponse);
       setHistory(historyResponse.results);
       setMetrics(metricsResponse);
     } catch (loadError) {

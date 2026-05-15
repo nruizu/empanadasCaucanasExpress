@@ -31,3 +31,31 @@ export async function getCourierAssignedOrders() {
 
   return (await response.json()) as PaginatedResponse<OrderHistoryItem>;
 }
+
+export async function updateCourierOrderStatus(
+  orderId: number,
+  newStatus: string,
+) {
+  const token = getToken();
+
+  const response = await fetch(
+    `${API_BASE_URL}/orders/${orderId}/courier-status/`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Token ${token}` } : {}),
+      },
+      body: JSON.stringify({ status: newStatus }),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const message =
+      body.detail || body.error || "Error al actualizar el estado del pedido";
+    throw new Error(message);
+  }
+
+  return (await response.json()) as OrderHistoryItem;
+}

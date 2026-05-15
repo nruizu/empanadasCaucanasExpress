@@ -53,6 +53,53 @@ const formatTime12h = (value: string) => {
   return `${normalizedHour}:${normalizedMinute} ${period}`;
 };
 
+const getApiErrorMessage = (errorData: unknown, fallback: string) => {
+  if (!errorData) {
+    return fallback;
+  }
+
+  if (typeof errorData === "string") {
+    return errorData.trim() || fallback;
+  }
+
+  if (Array.isArray(errorData)) {
+    const firstMessage = errorData.find((item) => typeof item === "string");
+    return typeof firstMessage === "string" && firstMessage.trim()
+      ? firstMessage
+      : fallback;
+  }
+
+  if (typeof errorData !== "object") {
+    return fallback;
+  }
+
+  const errorObject = errorData as Record<string, unknown>;
+  const messageFields = [
+    errorObject.non_field_errors,
+    errorObject.detail,
+    errorObject.message,
+    errorObject.error,
+    errorObject.delivery_address,
+    errorObject.pickup_time,
+    errorObject.order_items,
+  ];
+
+  for (const fieldValue of messageFields) {
+    if (Array.isArray(fieldValue)) {
+      const firstMessage = fieldValue.find((item) => typeof item === "string");
+      if (typeof firstMessage === "string" && firstMessage.trim()) {
+        return firstMessage;
+      }
+    }
+
+    if (typeof fieldValue === "string" && fieldValue.trim()) {
+      return fieldValue;
+    }
+  }
+
+  return fallback;
+};
+
 export default function CheckoutForm() {
   const router = useRouter();
   const { token } = useAuth();
@@ -119,7 +166,10 @@ export default function CheckoutForm() {
   };
 
   const handleValidateDeliveryAddress = async () => {
-    if (formData.delivery_method !== "delivery") {
+    if (
+      formData.delivery_method !== "delivery" &&
+      formData.delivery_method !== "scheduled"
+    ) {
       return;
     }
 
@@ -287,7 +337,8 @@ export default function CheckoutForm() {
         ...(formData.delivery_method === "scheduled" && {
           scheduled_date: formData.scheduled_date,
         }),
-        ...(formData.delivery_method === "delivery" && {
+        ...((formData.delivery_method === "delivery" ||
+          formData.delivery_method === "scheduled") && {
           delivery_address: formData.delivery_address,
         }),
         notes: formData.notes,
@@ -310,15 +361,36 @@ export default function CheckoutForm() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("❌ Error del servidor:", errorData); // Para debugging
-        throw new Error(
-          errorData.non_field_errors?.[0] ||
-            errorData.delivery_address?.[0] ||
-            errorData.pickup_time?.[0] ||
-            errorData.order_items?.[0] ||
-            "Error al crear el pedido",
-        );
+        let errorMessage = "Error al crear el pedido";
+        try {
+          const contentType = response.headers.get("content-type") ?? "";
+
+          if (contentType.includes("application/json")) {
+            const errorData = await response.json();
+            console.error("❌ Error del servidor:", errorData);
+            errorMessage = getApiErrorMessage(errorData, errorMessage);
+          } else {
+            const textBody = await response.text();
+            if (textBody.trim()) {
+              console.error("❌ Error del servidor:", textBody);
+              errorMessage = textBody;
+            }
+          }
+        } catch {
+          try {
+            const textBody = await response.text();
+            console.error("❌ Respuesta no JSON:", textBody);
+            errorMessage = textBody.trim() || errorMessage;
+          } catch {
+            errorMessage = `Error del servidor (${response.status})`;
+          }
+        }
+
+        if (errorMessage === "Error al crear el pedido") {
+          errorMessage = `Error del servidor (${response.status})`;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const createdOrder = await response.json();
@@ -369,7 +441,7 @@ export default function CheckoutForm() {
             notes: formData.notes,
             estimated_delivery_time:
               createdOrder?.estimated_delivery_time ||
-              (formData.delivery_method === "delivery" ? "45-60 minutos" : null),
+              (formData.delivery_method !== "pickup" ? "45-60 minutos" : null),
             total_price: createdOrder?.total_amount || cartSnapshot?.total_price || 0,
             items: cartSnapshot?.products || [],
           }),
@@ -745,13 +817,17 @@ export default function CheckoutForm() {
             </div>
           )}
 
-          {formData.delivery_method === "delivery" && (
+          {(formData.delivery_method === "delivery" || formData.delivery_method === "scheduled") && (
             <div className="rounded-xl border border-[color-mix(in_srgb,var(--primary)_12%,white)] bg-[color-mix(in_srgb,var(--secondary)_20%,white)] p-4">
               <h3 className="mb-2 font-semibold text-[var(--primary)]">Dirección de entrega</h3>
               <p className="mb-3 text-sm text-[var(--muted-foreground)]">
                 Horario domicilio: lunes a sábado de {formatTime12h(availability?.delivery_weekday_open ?? "09:00:00")} a {formatTime12h(availability?.delivery_weekday_close ?? "19:30:00")}, domingo de {formatTime12h(availability?.delivery_sunday_open ?? "08:00:00")} a {formatTime12h(availability?.delivery_sunday_close ?? "19:30:00")}.
               </p>
-              <p className="mb-3 text-sm font-semibold text-[var(--primary)]">Tiempo estimado de entrega: 45-60 minutos</p>
+              <p className="mb-3 text-sm font-semibold text-[var(--primary)]">
+                {formData.delivery_method === "scheduled"
+                  ? "Programas este domicilio para una fecha futura."
+                  : "Tiempo estimado de entrega: 45-60 minutos"}
+              </p>
               <textarea
                 name="delivery_address"
                 value={formData.delivery_address}

@@ -12,6 +12,10 @@ ALIASES = {
     "palito-de-queso-x2": "palitos_queso",
     "galleta-choco-nuez": "galleta_chocolate",
     "galletas-de-corazon-paq": "galletas_corazon",
+    "arepa-de-maiz": "arepa_maiz",
+    "arepas-de-maiz": "arepa_maiz",
+    "arepa-de-huevo": "arepa_huevo",
+    "carimanola": "carimañola",
 }
 
 KEYWORD_FILE_MAP = {
@@ -24,14 +28,14 @@ KEYWORD_FILE_MAP = {
     "caucanitas": "caucanitas_x_12.jpeg",
     "caucanas": "caucanitas_x_12.jpeg",
     "arepa-de-huevo": "arepa_huevo.jpeg",
-    "arepa-de-maiz": "arepa_maiz.jpeg",
-    "arepas-de-maiz": "arepa_maiz.jpeg",
+    "arepa-de-maiz": "arepa_maiz.jpg",
+    "arepas-de-maiz": "arepa_maiz.jpg",
     "arepa-de-chocolo": "chocolo.jpeg",
     "arepas-de-chocolo": "chocolo.jpeg",
     "gaseosa": "gaseosas.jpeg",
     "jugo": "jugo_soda.jpeg",
     "soda": "jugo_soda.jpeg",
-    "agua": "agua_botella.jpeg",
+    "agua": "agua_botella.jpg",
     "cerveza": "cerveza.jpeg",
     "hatsu": "hatsu.jpeg",
     "matcha": "matcha.jpeg",
@@ -48,8 +52,11 @@ KEYWORD_FILE_MAP = {
 }
 
 
+SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".avif"}
+
+
 def _find_file(images_dir: Path, base_name: str):
-    for ext in ("jpg", "jpeg", "png", "webp"):
+    for ext in ("jpg", "jpeg", "png", "webp", "avif"):
         candidate = images_dir / f"{base_name}.{ext}"
         if candidate.exists():
             return candidate
@@ -97,12 +104,7 @@ def run_seed_product_images(images_dir: str = "backend/catalog/seed_images"):
     image_files = [
         path
         for path in images_path.iterdir()
-        if path.is_file()
-        and path.suffix.lower()
-        in {
-            ".jpg",
-            ".jpeg",
-        }
+        if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
     ]
     compact_file_map = {_compact(path.stem): path for path in image_files}
     available_files = {path.name for path in image_files}

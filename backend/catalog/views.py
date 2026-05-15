@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 import logging
 from django.conf import settings
+from django.utils import timezone
 from rest_framework import filters, generics, status
 from rest_framework import serializers
 from rest_framework.pagination import PageNumberPagination
@@ -102,7 +103,7 @@ class CategoryProductListView(ActiveProductBaseListView):
 class AdminProductListCreateView(generics.ListCreateAPIView):
     serializer_class = ProductAdminSerializer
     permission_classes = (IsAdminUser,)
-    pagination_class = ProductPagination
+    pagination_class = None
     filter_backends = (filters.OrderingFilter, filters.SearchFilter)
     ordering_fields = ("name", "price", "is_active", "is_featured")
     ordering = ("name",)
@@ -161,6 +162,18 @@ class OrderListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
         serializer.save(user=user, order_source="online")
+
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except serializers.ValidationError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            logger.exception("Error inesperado al crear pedido")
+            return Response(
+                {"detail": "Error interno al procesar el pedido. Intenta nuevamente."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -261,6 +274,43 @@ class CourierAssignedOrderListView(generics.ListAPIView):
             .filter(assigned_courier=self.request.user)
             .order_by("-created_at")
         )
+
+
+class CourierOrderStatusUpdateView(APIView):
+    permission_classes = (IsAuthenticated, IsCourierUser)
+
+    def patch(self, request, pk: int):
+        order = get_object_or_404(
+            Order,
+            pk=pk,
+            assigned_courier=request.user,
+        )
+
+        new_status = request.data.get("status", "").strip()
+
+        allowed_transitions = {
+            "ready": ["in_transit"],
+            "in_transit": ["completed"],
+        }
+
+        if new_status not in allowed_transitions.get(order.status, []):
+            return Response(
+                {
+                    "detail": (
+                        "No puedes cambiar el estado del pedido"
+                        " desde su estado actual."
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if new_status == "completed":
+            order.delivered_at = timezone.now()
+
+        order.status = new_status
+        order.save(update_fields=["status", "delivered_at", "updated_at"])
+
+        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
 
 
 class AdminOrderAvailabilityConfigView(generics.RetrieveUpdateAPIView):
@@ -475,3 +525,32 @@ class AdminDeliveryCoverageSettingsView(APIView):
 
     def patch(self, request):
         return self._save(request, partial=True)
+
+
+class PublicStoreLocationView(APIView):
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        settings_obj = DeliveryCoverageSettings.objects.filter(is_enabled=True).first()
+        if not settings_obj:
+            return Response(
+                {"error": "No hay configuracion de cobertura activa"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(
+            {
+                "latitude": (
+                    str(settings_obj.local_latitude)
+                    if settings_obj.local_latitude is not None
+                    else None
+                ),
+                "longitude": (
+                    str(settings_obj.local_longitude)
+                    if settings_obj.local_longitude is not None
+                    else None
+                ),
+                "address": settings_obj.local_address or "",
+                "city": settings_obj.local_city or "",
+                "name": settings_obj.name or "",
+            }
+        )

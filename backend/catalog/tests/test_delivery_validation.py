@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -84,6 +85,35 @@ class DeliveryValidationApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("delivery_address", response.data)
+
+    @patch("backend.catalog.serializers.validate_delivery_address")
+    def test_create_scheduled_delivery_order_persists_geo_fields(self, mock_validate):
+        mock_validate.return_value = DeliveryValidationResult(
+            status="valid",
+            message="Direccion valida y dentro de cobertura",
+            latitude=Decimal("2.4450000"),
+            longitude=Decimal("-76.6140000"),
+            distance_km=Decimal("2.300"),
+            maps_url="https://www.google.com/maps/dir/?api=1&destination=2.445,-76.614",
+        )
+
+        payload = {
+            "customer_name": "Cliente Programado",
+            "customer_phone": "3003333333",
+            "delivery_method": "scheduled",
+            "scheduled_date": (timezone.now().date() + timedelta(days=1)).isoformat(),
+            "delivery_address": "Calle 10 #20-30, El Retiro",
+        }
+
+        response = self.client.post("/api/orders/", payload, format="json")
+
+        self.assertEqual(response.status_code, 201)
+        order = Order.objects.get(id=response.data["id"])
+        self.assertEqual(order.address_validation_status, "valid")
+        self.assertEqual(order.delivery_latitude, Decimal("2.4450000"))
+        self.assertEqual(order.delivery_longitude, Decimal("-76.6140000"))
+        self.assertEqual(order.delivery_distance_km, Decimal("2.300"))
+        self.assertTrue(order.delivery_maps_url)
 
     @patch("backend.catalog.serializers.validate_delivery_address")
     def test_pickup_order_does_not_trigger_delivery_validation(self, mock_validate):

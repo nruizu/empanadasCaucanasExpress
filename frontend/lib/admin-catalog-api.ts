@@ -11,6 +11,7 @@ export interface ProductAdminPayload {
   is_featured: boolean;
   is_active: boolean;
   category_id: number;
+  image?: File | null;
 }
 
 export interface OrderAvailabilityConfigPayload {
@@ -102,30 +103,94 @@ const request = async <T>(
 };
 
 export const getAdminProducts = () =>
-  request<PaginatedResponse<Product>>("/admin/products/").catch((error) => {
+  request<Product[]>("/admin/products/").catch((error) => {
     console.warn("No se pudo cargar productos admin", error);
-    return {
-      count: 0,
-      next: null,
-      previous: null,
-      results: [],
-    };
+    return [];
   });
 
-export const createAdminProduct = (payload: ProductAdminPayload) =>
-  request<Product>("/admin/products/", {
-    method: "POST",
-    body: JSON.stringify(payload),
+function buildProductFormData(payload: ProductAdminPayload): FormData {
+  const fd = new FormData();
+  fd.append("name", payload.name);
+  fd.append("slug", payload.slug);
+  fd.append("description", payload.description);
+  fd.append("price", payload.price);
+  fd.append("is_featured", payload.is_featured ? "true" : "false");
+  fd.append("is_active", payload.is_active ? "true" : "false");
+  fd.append("category_id", String(payload.category_id));
+  if (payload.image instanceof File) {
+    fd.append("image", payload.image);
+  }
+  return fd;
+}
+
+async function formDataRequest<T>(
+  path: string,
+  method: string,
+  payload: ProductAdminPayload,
+): Promise<T> {
+  const token = getToken();
+  const fd = buildProductFormData(payload);
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers: {
+      ...(token ? { Authorization: `Token ${token}` } : {}),
+    },
+    body: fd,
+    cache: "no-store",
   });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const message =
+      body.detail ||
+      body.error ||
+      body.non_field_errors?.[0] ||
+      body.slug?.[0] ||
+      body.name?.[0] ||
+      body.price?.[0] ||
+      "Error al gestionar catálogo";
+    throw new AdminApiError(message, response.status);
+  }
+
+  return (await response.json()) as T;
+}
+
+export const createAdminProduct = (payload: ProductAdminPayload): Promise<Product> => {
+  if (payload.image instanceof File) {
+    return formDataRequest<Product>("/admin/products/", "POST", payload);
+  }
+  const { image: _image, ...jsonPayload } = payload;
+  return request<Product>("/admin/products/", {
+    method: "POST",
+    body: JSON.stringify(jsonPayload),
+  });
+};
 
 export const updateAdminProduct = (
   productId: number,
   payload: ProductAdminPayload,
-) =>
-  request<Product>(`/admin/products/${productId}/`, {
+) => {
+  if (payload.image instanceof File) {
+    return formDataRequest<Product>(`/admin/products/${productId}/`, "PATCH", payload);
+  }
+  const body: Record<string, unknown> = {
+    name: payload.name,
+    slug: payload.slug,
+    description: payload.description,
+    price: payload.price,
+    is_featured: payload.is_featured,
+    is_active: payload.is_active,
+    category_id: payload.category_id,
+  };
+  if (payload.image === null) {
+    body.image = null;
+  }
+  return request<Product>(`/admin/products/${productId}/`, {
     method: "PATCH",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
+};
 
 export const deleteAdminProduct = (productId: number) =>
   request<void>(`/admin/products/${productId}/`, {

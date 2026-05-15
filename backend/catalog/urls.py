@@ -14,6 +14,8 @@ from .views import (
     DeliveryAddressValidationView,
     FeaturedProductListView,
     CourierAssignedOrderListView,
+    CourierOrderStatusUpdateView,
+    PublicStoreLocationView,
     OrderPaymentReceiptUploadView,
     AdminOrderPaymentDecisionView,
     OrderListCreateView,
@@ -71,6 +73,11 @@ urlpatterns = [
         name="order-assigned-list",
     ),
     path(
+        "orders/<int:pk>/courier-status/",
+        CourierOrderStatusUpdateView.as_view(),
+        name="order-courier-status",
+    ),
+    path(
         "orders/delivery/validate/",
         DeliveryAddressValidationView.as_view(),
         name="order-delivery-validate",
@@ -114,5 +121,10 @@ urlpatterns = [
         "admin/delivery-coverage/",
         AdminDeliveryCoverageSettingsView.as_view(),
         name="admin-delivery-coverage",
+    ),
+    path(
+        "store-location/",
+        PublicStoreLocationView.as_view(),
+        name="public-store-location",
     ),
 ]
