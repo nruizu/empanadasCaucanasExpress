@@ -14,6 +14,8 @@ EXPOSE 8080
 
 CMD sh -c "\
 python backend/manage.py migrate && \
+python backend/manage.py seed_products && \
+python backend/manage.py seed_product_images && \
 echo \"from django.contrib.auth import get_user_model; \
 User = get_user_model(); \
 username='${DJANGO_SUPERUSER_USERNAME}'; \
