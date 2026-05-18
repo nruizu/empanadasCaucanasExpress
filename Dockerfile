@@ -9,7 +9,7 @@ COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY backend/ /app/backend/
-COPY media/products /app/media/
+COPY backend/catalog/seed_images /app/media/
 
 EXPOSE 8080
 
