@@ -4,11 +4,12 @@ WORKDIR /app
 
 ENV PYTHONPATH=/app
 
-COPY requirements.txt /app/
+COPY backend/requirements.txt /app/
 
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY backend/ /app/backend/
+COPY media/ /app/media/
 
 EXPOSE 8080
 
