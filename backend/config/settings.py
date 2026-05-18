@@ -34,6 +34,7 @@ ALLOWED_HOSTS = ["empanadascaucanasexpress-production.up.railway.app"]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://empanadascaucanasexpress-production.up.railway.app",
+    "https://empanadas-caucanas-express.vercel.app",
 ]
 
 MEDIA_URL = "/media/"
@@ -68,6 +69,14 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOW_CREDENTIALS = True
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+USE_X_FORWARDED_HOST = True
 
 ROOT_URLCONF = "backend.config.urls"
 
@@ -149,6 +158,7 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
 
 PAGINATION_STR = "rest_framework.pagination.PageNumberPagination"
 REST_FRAMEWORK = {
