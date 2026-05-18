@@ -16,7 +16,7 @@ export interface DeliveryValidationResponse {
 
 export async function validateDeliveryAddress(deliveryAddress: string) {
   const response = await fetch(
-    `${API_BASE_URL}/api/orders/delivery/validate/`,
+    `${API_BASE_URL}/orders/delivery/validate/`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
