@@ -60,7 +60,7 @@ export default function AdminCoveragePage() {
     setError(null);
 
     try {
-      const data = await getDeliveryCoverageSettings();
+      const data = await getDeliveryCoverageSettings(token ?? "");
       setForm({
         id: data.id,
         name: data.name || "Cobertura principal",
@@ -183,7 +183,7 @@ export default function AdminCoveragePage() {
         coverage_note: form.coverage_note.trim(),
       };
 
-      const saved = await saveDeliveryCoverageSettings(payload);
+      const saved = await saveDeliveryCoverageSettings(payload, token ?? "");
       setForm({
         id: saved.id,
         name: saved.name,

@@ -25,8 +25,9 @@ const getToken = () => {
 const request = async <T>(
   path: string,
   options: RequestInit = {},
+  authToken?: string,
 ): Promise<T> => {
-  const token = getToken();
+  const token = authToken ?? getToken();
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -91,15 +92,20 @@ export interface DeliveryCoverageSettingsUpdatePayload {
   coverage_note?: string;
 }
 
-export const getDeliveryCoverageSettings = () =>
-  request<DeliveryCoverageSettingsDto>("/admin/delivery-coverage/");
+export const getDeliveryCoverageSettings = (token?: string) =>
+  request<DeliveryCoverageSettingsDto>("/admin/delivery-coverage/", {}, token);
 
 export const saveDeliveryCoverageSettings = (
   payload: DeliveryCoverageSettingsUpdatePayload,
+  token?: string,
 ) =>
-  request<DeliveryCoverageSettingsDto>("/admin/delivery-coverage/", {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+  request<DeliveryCoverageSettingsDto>(
+    "/admin/delivery-coverage/",
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+    token,
+  );
 
 export { AdminDeliveryCoverageApiError };

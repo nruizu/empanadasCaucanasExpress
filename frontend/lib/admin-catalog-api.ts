@@ -67,8 +67,9 @@ const getToken = () => {
 const request = async <T>(
   path: string,
   options: RequestInit = {},
+  authToken?: string,
 ): Promise<T> => {
-  const token = getToken();
+  const token = authToken ?? getToken();
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -127,8 +128,9 @@ async function formDataRequest<T>(
   path: string,
   method: string,
   payload: ProductAdminPayload,
+  authToken?: string,
 ): Promise<T> {
-  const token = getToken();
+  const token = authToken ?? getToken();
   const fd = buildProductFormData(payload);
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
