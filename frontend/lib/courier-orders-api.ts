@@ -2,8 +2,7 @@ import type { PaginatedResponse } from "@/types/catalog";
 import type { OrderHistoryItem } from "@/lib/auth-api";
 
 const API_BASE_URL =
-  (globalThis as { process?: { env?: { NEXT_PUBLIC_API_URL?: string } } })
-    .process?.env?.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 const getToken = () => {
   if (typeof window === "undefined") return null;

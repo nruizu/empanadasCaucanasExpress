@@ -351,7 +351,7 @@ export default function CheckoutForm() {
 
       console.log("📦 Enviando orden:", orderPayload); // Para debugging
 
-      const response = await fetch("http://localhost:8080/api/orders/", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api"}/orders/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
