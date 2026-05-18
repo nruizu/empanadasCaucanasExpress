@@ -59,19 +59,19 @@ async function request(path: string, options: RequestInit = {}) {
 
 // 🔹 Obtener carrito del usuario
 export async function getMyCart() {
-  return request("/api/cart/my_cart/");
+  return request("/cart/my_cart/");
 }
 
 // 🔹 Crear carrito
 export function createCart() {
-  return request("/api/cart/create_cart/", {
+  return request("/cart/create_cart/", {
     method: "POST",
   });
 }
 
 // 🔹 Agregar producto
 export function addProduct(productId: number, quantity: number) {
-  return request("/api/cart/add_product/", {
+  return request("/cart/add_product/", {
     method: "POST",
     body: JSON.stringify({
       product_id: productId,
@@ -82,7 +82,7 @@ export function addProduct(productId: number, quantity: number) {
 
 // 🔹 Obtener carrito por ID
 export function getCart(cartId: number | string) {
-  return request(`/api/cart/${cartId}/`);
+  return request(`/cart/${cartId}/`);
 }
 
 // 🔹 Eliminar producto del carrito
@@ -90,7 +90,7 @@ export function removeProduct(
   cartId: number | string,
   cartProductId: number | string
 ) {
-  return request(`/api/cart/${cartId}/remove_product/`, {
+  return request(`/cart/${cartId}/remove_product/", {
     method: "DELETE",
     body: JSON.stringify({
       cart_product_id: cartProductId,
@@ -100,7 +100,7 @@ export function removeProduct(
 
 // 🔹 Vaciar carrito completo
 export function clearCart(cartId: number | string) {
-  return request(`/api/cart/${cartId}/clear_cart/`, {
+  return request(`/cart/${cartId}/clear_cart/", {
     method: "DELETE",
   });
 }
@@ -110,7 +110,7 @@ export function updateQuantity(
   cartProductId: number | string,
   quantity: number
 ) {
-  return request("/api/cart/update_quantity/", {
+  return request("/cart/update_quantity/", {
     method: "PATCH",
     body: JSON.stringify({
       cart_product_id: cartProductId,
