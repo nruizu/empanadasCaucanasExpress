@@ -90,7 +90,7 @@ export function removeProduct(
   cartId: number | string,
   cartProductId: number | string
 ) {
-  return request(`/cart/${cartId}/remove_product/", {
+  return request(`/cart/${cartId}/remove_product/`, {
     method: "DELETE",
     body: JSON.stringify({
       cart_product_id: cartProductId,
@@ -100,7 +100,7 @@ export function removeProduct(
 
 // 🔹 Vaciar carrito completo
 export function clearCart(cartId: number | string) {
-  return request(`/cart/${cartId}/clear_cart/", {
+  return request(`/cart/${cartId}/clear_cart/`, {
     method: "DELETE",
   });
 }
