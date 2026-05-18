@@ -72,6 +72,36 @@ def run_seed_products():
         "comidas-combo-chorizo-de-cerdo-o-pollo-con-arepa" "-de-chocolo": True,
     }
 
+    DESCRIPTIONS = {
+        "entradas-combo-caucano-caucanitas-palitos-de-queso"
+        "-pastel-de-pollo-papitas-rellenas": (
+            "Caucanitas, palitos de queso, pasteles de pollo y papitas rellenas"
+        ),
+        "desayunos-desayuno-basico-huevos-arepa-con-quesito"
+        "-empanada-caucana": (
+            "Huevos, arepa con quesito y empanada caucana (incluye bebida)"
+        ),
+        "desayunos-desayuno-completo-huevos-arepa-con-quesito"
+        "-empanada-caucana-y-porcion-de-morcilla-chorizo-o"
+        "-chicharron": (
+            "Huevos, arepa con quesito, empanada caucana y porción de "
+            "morcilla, chorizo o chicharrón (incluye bebida)"
+        ),
+        "comidas-combo-chorizo-de-cerdo-o-pollo-con-arepa-de"
+        "-chocolo": "Chuzo de pollo o cerdo con arepa de chocolo",
+        "comidas-picada-pequena-caucanitas-morcilla-chorizo"
+        "-chicharron-arepas-de-maiz": (
+            "Incluye caucanitas, morcilla, chorizo, chicharrón y arepa de mote"
+        ),
+        "comidas-picada-68-personas": (
+            "Incluye caucanitas, morcilla, chorizo, chicharrón y arepa de mote"
+        ),
+        "para-llevar-chorizo": "Paquete de chorizos para llevar",
+        "para-llevar-caucanitas-x12": "Paquete caucanitas x12 para llevar",
+        "para-llevar-libra-de-morcilla": "Paquete libra de morcilla para llevar",
+        "para-llevar-arepas-de-chocolo": "Paquete arepas de chocolo para llevar",
+    }
+
     # (category_slug, name, price, is_active)
     products_data = [
         # Entradas
@@ -174,7 +204,7 @@ def run_seed_products():
             slug=slug,
             defaults={
                 "name": name,
-                "description": "",
+                "description": DESCRIPTIONS.get(slug, ""),
                 "price": Decimal(price),
                 "category": categories[category_slug],
                 "is_active": is_active,
